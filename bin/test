@@ -8,8 +8,11 @@ work in any circumstances. See "sympy.test?" for documentation.
 """
 
 import sys
+import os
 from optparse import OptionParser
 
+from get_sympy import path_hack
+path_hack()
 import sympy
 
 parser = OptionParser()
