@@ -29,6 +29,7 @@ class symbol_base(object):
 
     def __repr__(self):
         if self.id == "(name)" or self.id == "(literal)":
+            if self.id == '(name)': print '***', self.value
             return "(%s %s)" % (self.id[1:-1], self.value)
         out = [self.id, self.first, self.second, self.third]
         out = map(str, filter(None, out))

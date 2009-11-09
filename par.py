@@ -184,6 +184,25 @@ def led(self, left):
     advance(")")
     return self
 
+@method(symbol("("))
+def nud(self):
+    self.first = []
+    comma = False
+    if token.id != ")":
+        while 1:
+            if token.id == ")":
+                break
+            self.first.append(expression())
+            if token.id != ",":
+                break
+            comma = True
+            advance(",")
+    advance(")")
+    if not self.first or comma:
+        return self # tuple
+    else:
+        return self.first[0]
+
 def tokenize_python(program):
     import tokenize
     from cStringIO import StringIO
@@ -242,4 +261,5 @@ if __name__ == '__main__':
     test("log(2*(1+10**3))")
     test("(1+x)*3")
     test("2.3")
+    test("1.0+1.0j")
 
