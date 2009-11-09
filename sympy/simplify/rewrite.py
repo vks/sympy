@@ -230,7 +230,7 @@ def apart(f, z, **flags):
        y/(1 + x) - y/(2 + x)
 
        >>> apart(1/(1+x**5), x, evaluate=False)
-       RootSum(Lambda(_a, -1/5/(x - _a)*_a), x**5 + 1, x)
+       RootSum(Lambda(_a, -_a/(5*(x - _a))), x**5 + 1, x)
 
        For more information on the implemented algorithm refer to:
 

@@ -107,7 +107,14 @@ def test(*paths, **kwargs):
         t._tests.extend(test_files)
     else:
         paths = convert_to_native_paths(paths)
-        t._tests.extend([f for f in test_files if any(p in f for p in paths)])
+        matched = []
+        for f in test_files:
+            basename = os.path.basename(f)
+            for p in paths:
+                if p in f or fnmatch(basename, p):
+                    matched.append(f)
+                    break
+        t._tests.extend(matched)
 
     return t.test(sort=sort)
 
@@ -145,9 +152,10 @@ def doctest(*paths, **kwargs):
     blacklist = kwargs.get("blacklist", [])
     blacklist.extend(convert_to_native_paths([
                     "sympy/thirdparty/pyglet", # segfaults
+                    "doc/src/modules/mpmath", # needs to be fixed upstream
                     "sympy/mpmath", # needs to be fixed upstream
+                    "doc/src/modules/plotting.txt", # generates live plots
                     "sympy/plotting", # generates live plots
-                    "/doc/src/modules/plotting.txt", # generates live plots
                     "sympy/utilities/compilef.py", # needs tcc
                     "sympy/galgebra/GA.py", # needs numpy
                     "sympy/galgebra/latex_ex.py", # needs numpy
@@ -159,18 +167,29 @@ def doctest(*paths, **kwargs):
     t = SymPyDocTests(r, strict)
 
     test_files = t.get_test_files('sympy')
-
+    not_blacklisted = [f for f in test_files
+                         if not any(b in f for b in blacklist)]
     if len(paths) == 0:
-        # take all but what is on the blacklist
-        t._tests.extend([f for f in test_files
-                         if not any(b in f for b in blacklist)])
+        t._tests.extend(not_blacklisted)
     else:
-        # take only what was requested...even if it's on the blacklist
+        # take only what was requested...but not blacklisted items
+        # and allow for partial match anywhere or fnmatch of name
         paths = convert_to_native_paths(paths)
-        t._tests.extend([f for f in test_files if any(p in f for p in paths)])
+        matched = []
+        for f in not_blacklisted:
+            basename = os.path.basename(f)
+            for p in paths:
+                if p in f or fnmatch(basename, p):
+                    matched.append(f)
+                    break
+        t._tests.extend(matched)
 
     # run the tests and record the result for this *py portion of the tests
-    doc_tests_succeeded = t.test()
+    if t._tests:
+        doc_tests_succeeded = t.test()
+    else:
+        print 'No matching *py files.'
+        doc_tests_succeeded = True
 
     # test *txt files only if we are running python newer than 2.4
     if sys.version_info[:2] > (2,4):
@@ -183,21 +202,29 @@ def doctest(*paths, **kwargs):
         # files through this they might fail because they will lack the needed
         # imports and smarter parsing that can be done with source code.
         #
-        txt_files = t.get_test_files('doc/src', '*.txt', init_only=False)
-        txt_files.sort()
+        test_files = t.get_test_files('doc/src', '*.txt', init_only=False)
+        test_files.sort()
+
+        not_blacklisted = [f for f in test_files
+                             if not any(b in f for b in blacklist)]
 
         if len(paths) == 0:
-            txt_files = filter(lambda f: not any(b in f for b in blacklist),
-                               txt_files)
+            matched = not_blacklisted
         else:
-            # take only what was requested...even if it's on the blacklist;
-            # paths were already made native in *py tests so don't repeat here.
+            # Take only what was requested as long as it's not on the blacklist.
+            # Paths were already made native in *py tests so don't repeat here.
             # There's no chance of having a *py file slip through since we
-            # only have *txt files in txt_files
-            txt_files = [f for f in txt_files if any(p in f for p in paths)]
+            # only have *txt files in test_files.
+            matched =  []
+            for f in not_blacklisted:
+                basename = os.path.basename(f)
+                for p in paths:
+                    if p in f or fnmatch(basename, p):
+                        matched.append(f)
+                        break
 
         setup_pprint()
-        for txt_file in txt_files:
+        for txt_file in matched:
             if not os.path.isfile(txt_file):
                 continue
             old_displayhook = sys.displayhook
@@ -216,8 +243,8 @@ def doctest(*paths, **kwargs):
 
     # the doctests for *py will have printed this message already if there was
     # a failure, so now only print it if there was intervening reporting by
-    # testing the txt_files.
-    if txt_files and not doc_tests_succeeded:
+    # testing the *txt.
+    if matched and not doc_tests_succeeded:
         print("DO *NOT* COMMIT!")
     return doc_tests_succeeded
 
@@ -399,10 +426,10 @@ class SymPyDocTests(object):
             old = sys.stdout
             new = StringIO()
             sys.stdout = new
-            # if the last commented line below is uncommented then
-            # the test must run on its own, but any imports done at the
-            # top of the docstring will apply to subsequent examples
-            # unless cleare_globs is True in the .run() args.
+            # the doctests must run on their own; all imports must be
+            # explicit within a function's docstring. Once imported
+            # that import will be available to the rest of the tests in
+            # a given function's docstring (unless clear_globs=True below).
             if self._strict:
                 test.globs = {}
             try:

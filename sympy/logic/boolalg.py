@@ -15,7 +15,7 @@ class And(BooleanFunction):
     are False, and True if they are all True.
 
     Examples:
-        >>> from sympy import *
+        >>> from sympy.core import symbols
         >>> x, y = symbols('xy')
         >>> x & y
         And(x, y)
