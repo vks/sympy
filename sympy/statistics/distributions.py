@@ -55,6 +55,7 @@ class Normal(ContinuousProbability):
 
     Example usage:
 
+        >>> from sympy.statistics import Normal
         >>> N = Normal(1, 2)
         >>> N.mean
         1
@@ -187,6 +188,7 @@ class Uniform(ContinuousProbability):
     def confidence(s, p):
         """Generate a symmetric (p*100)% confidence interval.
 
+        >>> from sympy.statistics import Uniform
         >>> U = Uniform(1, 2)
         >>> U.confidence(1)
         (1, 2)
@@ -221,6 +223,7 @@ class PDF(ContinuousProbability):
     Example usage:
 
         >>> from sympy import Symbol
+        >>> from sympy.statistics.distributions import PDF
         >>> x = Symbol('x')
         >>> a = Symbol('a', positive=True)
 
