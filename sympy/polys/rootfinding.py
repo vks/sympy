@@ -412,8 +412,8 @@ def roots(f, *symbols, **flags):
 def poly_root_factors(f, *symbols, **flags):
     """Returns all factors of a univariate polynomial.
 
-       >>> from sympy import *
-       >>> x,y = symbols('xy')
+       >>> from sympy.polys.rootfinding import poly_root_factors
+       >>> from sympy.abc import x, y
 
        >>> factors = poly_root_factors(x**2-y, x)
 
