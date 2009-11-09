@@ -1,41 +1,105 @@
-# see http://effbot.org/zone/simple-top-down-parsing.htm
+import tokenize as tokenizer
+from cStringIO import StringIO
 
-import sys
-import re
+from names import sympy_names
 
-try:
-    # test binding for python's built-in tokenizer; see
-    # http://svn.effbot.org/public/stuff/sandbox/pytoken
-    import pytoken
-except ImportError:
-    pytoken = None
+##########
+# PARSER #
+##########
 
+def expression(rbp=0):
+    # TODO: docstring
+    global token
+    t = token
+    token = next()
+    left = t.nud()
+    while rbp < token.lbp:
+        t = token
+        token = next()
+        left = t.led(left)
+    return left
 
-# symbol (token type) registry
+def advance(id=None):
+    """Check that current token has a given id, before fetching next token."""
+    global token
+    if id and token.id != id:
+        raise SyntaxError("Expected %r" % id)
+    token = next()
+
+def parse(program):
+    """Parse a programm given as a string."""
+    global token, next
+    next = tokenize(program).next
+    token = next()
+    return expression()
+
+def test(program, eval_sympy=True):
+    """Show input and parsed result."""
+    print ">>>", program
+    p = str(parse(program))
+    print p
+    if eval_sympy:
+        from sympy import *
+        try:
+            p = srepr(eval(p))
+            print '=>', p
+        except:
+            pass
+    print
+
+###########
+# SYMBOLS #
+###########
 
 symbol_table = {}
 
 class symbol_base(object):
-
-    id = None
-    value = None
-    first = second = third = None
+    """Base class for a symbol to be parsed."""
+    id = None # node/token type name
+    value = None # used by literals
+    first = second = third = None # use by tree nodes
 
     def nud(self):
-        raise SyntaxError("Syntax error (%r)." % self.id)
+        """Null denotation.
+
+        When a token appears at he beginning of a language construct.
+        """
+        raise SyntaxError("Syntax error: %r" % self.id)
 
     def led(self, left):
-        raise SyntaxError("Unknown operator (%r)." % self.id)
+        """Left Denotation.
+
+        Appears inside a construct (to the left of the rest).
+        """
+        raise SyntaxError("Unknown operator: %r" % self.id)
 
     def __repr__(self):
-        if self.id == "(name)" or self.id == "(literal)":
-            if self.id == '(name)': print '***', self.value
-            return "(%s %s)" % (self.id[1:-1], self.value)
-        out = [self.id, self.first, self.second, self.third]
+        # catch numbers and names
+        if self.id == 'name':
+            if self.value in sympy_names:
+                return '%s' % self.value
+            else: # treat anything that is not a name as a Symbol
+                return "Symbol('%s')" % self.value
+        if self.id in ('Real', 'Integer'):
+            return "%s(%s)" % (self.id, self.value)
+        # anything else
+        out = [self.first, self.second, self.third]
         out = map(str, filter(None, out))
-        return "(" + " ".join(out) + ")"
+        if not self.name is None: # use name instead of id
+            name = self.name
+        else:
+            name = self.id
+        if self.id == '(' and isinstance(self.second, list): # function with args
+            return '%s(%s)' % (self.first, ', '.join(map(str, self.second)))
+        return name + '(' + ", ".join(out) + ')'
 
-def symbol(id, bp=0):
+def symbol(id, bp=0, name=None):
+    """Register a symbol.
+
+    id : token identifier
+    bp : binding power
+    name : name for representation (used instead of id)
+    """
     try:
         s = symbol_table[id]
     except KeyError:
@@ -43,6 +107,7 @@ def symbol(id, bp=0):
             pass
         s.__name__ = "symbol-" + id # for debugging
         s.id = id
+        s.name = name
         s.value = None
         s.lbp = bp
         symbol_table[id] = s
@@ -50,42 +115,42 @@ def symbol(id, bp=0):
         s.lbp = max(bp, s.lbp)
     return s
 
-# helpers
-
-def infix(id, bp):
+def infix(id, bp, name=None):
+    """Register an infix operator."""
     def led(self, left):
         self.first = left
         self.second = expression(bp)
         return self
-    symbol(id, bp).led = led
+    symbol(id, bp, name).led = led
 
-def infix_r(id, bp):
+def infix_r(id, bp, name=None):
+    """Register an infix operator with right associativity."""
     def led(self, left):
         self.first = left
-        self.second = expression(bp-1)
+        self.second = expression(bp - 1)
         return self
-    symbol(id, bp).led = led
+    symbol(id, bp, name).led = led
 
-def prefix(id, bp):
+def prefix(id, bp, name=None):
+    """Register a prefix operator."""
     def nud(self):
         self.first = expression(bp)
+        self.second = None
         return self
-    symbol(id).nud = nud
-
-def advance(id=None):
-    global token
-    if id and token.id != id:
-        raise SyntaxError("Expected %r" % id)
-    token = next()
+    symbol(id, name=name).nud = nud
 
 def method(s):
-    # decorator
+    """Pick up function name and attach given symbol."""
     assert issubclass(s, symbol_base)
     def bind(fn):
         setattr(s, fn.__name__, fn)
     return bind
 
-# python expression syntax
+#########
+# MODEL #
+#########
+
+#########################
 
 symbol("lambda", 20)
 symbol("if", 20); symbol("else") # ternary form
@@ -102,23 +167,23 @@ infix("|", 70); infix("^", 80); infix("&", 90)
 
 infix("<<", 100); infix(">>", 100)
 
-infix("+", 110); infix("-", 110)
+infix("+", 110, 'Add'); infix("-", 110)
 
-infix("*", 120); infix("/", 120); infix("//", 120)
+infix("*", 120, 'Mul'); infix("/", 120); infix("//", 120)
 infix("%", 120)
 
 prefix("-", 130); prefix("+", 130); prefix("~", 130)
 
-infix_r("**", 140)
+infix_r("**", 140, 'Pow')
 
 symbol(".", 150); symbol("[", 150); symbol("(", 150)
 
 # additional behaviour
 
-symbol("(name)").nud = lambda self: self
-symbol("(literal)").nud = lambda self: self
-
-symbol("(end)")
+symbol('name').nud = lambda self: self
+symbol('Integer').nud = lambda self: self
+symbol('Real').nud = lambda self: self
+symbol('end')
 
 symbol(")")
 
@@ -287,115 +352,63 @@ def nud(self):
     advance("}")
     return self
 
-# python tokenizer
+#########################
 
 def tokenize_python(program):
-    import tokenize
-    from cStringIO import StringIO
     type_map = {
-        tokenize.NUMBER: "(literal)",
-        tokenize.STRING: "(literal)",
-        tokenize.OP: "(operator)",
-        tokenize.NAME: "(name)",
+        tokenizer.NUMBER: "Real",
+        tokenizer.STRING: "string", # TODO
+        tokenizer.OP: "operator",
+        tokenizer.NAME: "name",
         }
-    for t in tokenize.generate_tokens(StringIO(program).next):
+    for t in tokenizer.generate_tokens(StringIO(program).next):
         try:
             yield type_map[t[0]], t[1]
         except KeyError:
-            if t[0] == tokenize.NL:
+            if t[0] == tokenizer.NL:
                 continue
-            if t[0] == tokenize.ENDMARKER:
+            if t[0] == tokenizer.ENDMARKER:
                 break
             else:
                 raise SyntaxError("Syntax error")
-    yield "(end)", "(end)"
+    yield "end", "end" # TODO: multiline supported or not?
 
+mynames = set(['name', 'Integer', 'Real'])
 def tokenize(program):
+    """Tokenize the program given as a string."""
     if isinstance(program, list):
         source = program
     else:
         source = tokenize_python(program)
     for id, value in source:
-        if id == "(literal)":
+        if 0: #id == "(literal)":
             symbol = symbol_table[id]
             s = symbol()
             s.value = value
         else:
             # name or operator
             symbol = symbol_table.get(value)
-            if symbol:
+            if symbol: # operator or known name
                 s = symbol()
-            elif id == "(name)":
+            elif id in mynames: # unknown name or number
                 symbol = symbol_table[id]
                 s = symbol()
                 s.value = value
             else:
-                raise SyntaxError("Unknown operator (%r)" % id)
+                raise SyntaxError("Unknown operator: %r)" % id)
         yield s
 
-# parser engine
 
-def expression(rbp=0):
-    global token
-    t = token
-    token = next()
-    left = t.nud()
-    while rbp < token.lbp:
-        t = token
-        token = next()
-        left = t.led(left)
-    return left
+if __name__ == '__main__':
+    test("1")
+    test("+1")
+    test("-1")
+    test("1 + 2")
+    test("1+2+3")
+    test("1+2*3")
+    test("(1+2)*3")
+    test("log(2*(1+10**3))")
+    test("(1+x)*3")
+    test("2.3")
+    test("1.0+1.0j")
 
-def parse(program):
-    global token, next
-    next = tokenize(program).next
-    token = next()
-    return expression()
-
-def test(program):
-    print ">>>", program
-    print parse(program)
-
-# samples
-test("1")
-test("+1")
-test("-1")
-test("1+2")
-test("1+2+3")
-test("1+2*3")
-test("(1+2)*3")
-test("(1+x)*3")
-test("log(2*(1+x))")
-test("2.3")
-"""
-test("()")
-test("(1)")
-test("(1,)")
-test("(1, 2)")
-test("[1, 2, 3]")
-test("{}")
-test("{1: 'one', 2: 'two'}")
-test("1.0*2+3")
-test("'hello'+'world'")
-test("2**3**4")
-test("1 and 2")
-test("foo.bar")
-test("1 + hello")
-test("1 if 2 else 3")
-test("'hello'[0]")
-test("hello()")
-test("hello(1,2,3)")
-test("lambda: 1")
-test("lambda a, b, c: a+b+c")
-test("True")
-test("True or False")
-test("1 in 2")
-test("1 not in 2")
-test("1 is 2")
-test("1 is not 2")
-test("1 is (not 2)")
-
-
-print
-print list(tokenize("1 not in 2"))
-"""
