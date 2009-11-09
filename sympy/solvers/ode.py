@@ -737,7 +737,7 @@ def classify_ode(eq, func, dict=False):
 
 @vectorize(0)
 def odesimp(eq, func, order, hint):
-    """
+    r"""
     Simplifies ODEs, including trying to solve for func and running
     constantsimp().
 
@@ -776,6 +776,7 @@ def odesimp(eq, func, order, hint):
             |    \          \u2//
             |
            /
+        <BLANKLINE>
 
         >>  pprint(odesimp(eq, f(x), 1,
         ... hint='1st_homogeneous_coeff_subs_indep_div_dep'
@@ -903,7 +904,7 @@ def checkodesol(ode, func, sol, order='auto', solve_for_func=True):
     To use this function to test, test the first item of the tuple.
     == Examples ==
         >>> from sympy import *
-        >>> x = Symbol('x')
+        >>> x, C1 = symbols('x C1')
         >>> f = Function('f')
         >>> checkodesol(f(x).diff(x), f(x), Eq(f(x), C1))
         (True, 0)

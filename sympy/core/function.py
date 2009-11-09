@@ -898,7 +898,7 @@ def expand(e, deep=True, power_base=True, power_exp=True, mul=True, \
     and expand_func, which are wrappers around those expansion methods.
 
     >>> from sympy import *
-    >>> x,y = symbols('xy')
+    >>> from sympy.abc import x,y,z
 
     mul - Distributes multiplication over addition.
     >>> (y*(x + z)).expand(mul=True)

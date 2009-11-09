@@ -56,7 +56,7 @@ def monomial_count(V, N):
        >>> M = monomials([x, y], 2)
 
        >>> print M
-       [1, x, y, x**2, y**2, x*y]
+       set([1, x, y, x*y, x**2, y**2])
        >>> len(M)
        6
 
@@ -110,9 +110,9 @@ def monomial_mul(a, b):
        Lets multiply x**3*y**4*z with x*y**2:
 
        >>> monomial_mul((3, 4, 1), (1, 2, 0))
-       (4, 5, 1)
+       (4, 6, 1)
 
-       which gives x**4*y**5*z.
+       which gives x**4*y**6*z.
 
     """
     return tuple([ x + y for x, y in zip(a, b) ])
@@ -129,7 +129,7 @@ def monomial_div(a, b):
        which gives x**2*y**2*z. However
 
        >>> monomial_div((3, 4, 1), (1, 2, 2))
-       None
+       <BLANKLINE>
 
        x*y**2*z**2 does not divide x**3*y**4*z.
 
@@ -191,7 +191,7 @@ def monomial_min(*monoms):
        wish to find out what is the maximal degree for each of x, y, z
        variables:
 
-       >>> monomial_max((3,4,5), (0,5,1), (6,3,9))
+       >>> monomial_min((3,4,5), (0,5,1), (6,3,9))
        (0, 3, 1)
 
     """
@@ -209,7 +209,7 @@ def monomial_as_basic(monom, *syms):
        >>> x,y,z = symbols('xyz')
 
        >>> monomial_as_basic((3, 2, 1), x, y, z)
-       x**3*y**2*z
+       z*x**3*y**2
 
     """
     return Mul(*[ b**e for b, e in zip(syms, monom) ])

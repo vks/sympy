@@ -1529,10 +1529,12 @@ class Basic(AssumeMeths):
         """ Return the number of operations in expressions.
 
         Examples:
+        >>> from sympy.abc import a, b, x
+        >>> from sympy import sin
         >>> (1+a+b**2).count_ops()
-        POW + 2 * ADD
+        POW + 2*ADD
         >>> (sin(x)*x+sin(x)**2).count_ops()
-        ADD + MUL + POW + 2 * SIN
+        2 + ADD + MUL + POW
 
         """
         return Integer(len(self)-1) + sum([t.count_ops(symbolic=symbolic) for t in self])
@@ -2330,7 +2332,7 @@ class Basic(AssumeMeths):
         >>> (1+x+x**2).as_leading_term(x)
         1
         >>> (1/x**2+x+x**2).as_leading_term(x)
-        1/x**2
+        x**(-2)
 
         Note:
 
