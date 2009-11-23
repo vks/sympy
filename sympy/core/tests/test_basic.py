@@ -611,6 +611,12 @@ def test_extractions():
     assert (Rational(1,2)*x).extract_multiplicatively(3) == x/6
     assert (x**(Rational(1,2))).extract_multiplicatively(x) == None
     assert (x**(Rational(1,2))).extract_multiplicatively(1/x) == x**(Rational(3,2))
+    assert ((x**(y+z))**2).extract_multiplicatively(x**y) == x**y*(x**z)**2
+    assert ((x**(y+z))**2).extract_multiplicatively(x**2) == None
+    assert ((x**(y+z))**2).extract_multiplicatively((x**y)**2) == (x**z)**2
+    assert ((x**(y+z))**2).extract_multiplicatively(x**(y+z)) == x**y*x**z
+    assert ((x**n)**2).extract_multiplicatively(x**2) == x**n
+    assert ((x**n)**2).extract_multiplicatively(x**n) == x**2
 
     assert ((x*y)**3).extract_additively(1) == None
     assert (x+1).extract_additively(x) == 1
@@ -619,10 +625,13 @@ def test_extractions():
     assert (-x+1).extract_additively(2*x) == 1-3*x
 
     assert (Integer(-3)).could_extract_minus_sign() == True
-    assert (-n*x+x).could_extract_minus_sign() != (n*x-x).could_extract_minus_sign()
-    assert (x-y).could_extract_minus_sign() != (-x+y).could_extract_minus_sign()
-    assert (1-x-y).could_extract_minus_sign() == True
+    assert (-n*x+x).could_extract_minus_sign() != \
+           (n*x-x).could_extract_minus_sign()
+    assert (x-y).could_extract_minus_sign() != \
+           (y-x).could_extract_minus_sign()
+    assert (1-x-y).could_extract_minus_sign() == False
     assert (1-x+y).could_extract_minus_sign() == False
+    assert (1+x-y).could_extract_minus_sign() == False
     assert ((-x-x*y)/y).could_extract_minus_sign() == True
     assert (-(x+x*y)/y).could_extract_minus_sign() ==  True
     assert ((x+x*y)/(-y)).could_extract_minus_sign() == True

@@ -410,8 +410,9 @@ def dsolve(eq, func, hint="default", simplify=True, **kwargs):
     # odesimp() will attempt to integrate, if necessary, apply constantsimp(),
     # attempt to solve for func, and apply any other hint specific simplifications
     if simplify:
-        return odesimp(solvefunc(eq, func, order=hints['order'],
-            match=hints[hint]), func, hints['order'], hint)
+        return odesimp(
+                  solvefunc(eq, func, order=hints['order'], match=hints[hint]),
+                  func, hints['order'], hint)
     else:
         # We still want to integrate (you can disable it separately with the hint)
         r = hints[hint]
@@ -640,7 +641,7 @@ def classify_ode(eq, func, dict=False):
             # dy/dx == F(y/x) or dy/dx == F(x/y)
             ordera = homogeneous_order(r[d], x, y)
             orderb = homogeneous_order(r[e], x, y)
-            if ordera == orderb and ordera != None:
+            if ordera == orderb and ordera is not None:
                 # u1=y/x and u2=x/y
                 u1 = Symbol('u1', dummy=True)
                 u2 = Symbol('u2', dummy=True)
@@ -787,6 +788,8 @@ def odesimp(eq, func, order, hint):
            \2*x /
 
     """
+    from sympy.utilities.iterables import iff
+
     x = func.args[0]
     f = func.func
     C1 = Symbol('C1')
@@ -813,10 +816,10 @@ def odesimp(eq, func, order, hint):
 
     if eq.lhs == func and not eq.rhs.has(func):
         # The solution is already solved
-        pass
+        eqs = [eq]
     elif eq.rhs == func and not eq.lhs.has(func):
         # The solution is solved, but in reverse, so switch it
-        eq = Eq(eq.rhs, eq.lhs)
+        eqs = [Eq(eq.rhs, eq.lhs)]
     else:
         # The solution is not solved, so try to solve it
         try:
@@ -824,43 +827,58 @@ def odesimp(eq, func, order, hint):
             if eqsol == []:
                 raise NotImplementedError
         except NotImplementedError:
-            pass
+            eqs = [eq]
         else:
-            eq = [Eq(f(x), t) for t in eqsol]
+            eqs = [Eq(f(x), t) for t in eqsol]
             # Special handling for certain hints that we know will usually take a
             # certain form
             if hint[:21] == "1st_homogeneous_coeff":
-                neweq = []
-                for i in eq:
+                neweqs = []
+                for i in eqs:
                     newi = logcombine(i, assume_pos_real=True)
                     if newi.lhs.is_Function and newi.lhs.func == log and newi.rhs == 0:
                         newi = Eq(newi.lhs.args[0]*C1,C1)
-                    neweq.append(newi)
-                eq = neweq
-            if len(eq) == 1:
-                eq = eq[0] # We only want a list if there are multiple solutions
+                    neweqs.append(newi)
+                eqs = neweqs
 
     if hint[:25] == "nth_linear_constant_coeff":
-        # Collect termms to make the solution look nice.
+        # Collect terms to make the solution look nice.
         # This is also necessary for constantsimp to remove unnecessary terms
         # from the particular solution from variation of parameters
         global collectterms
-        sol = eq.rhs
-        sol = expand_mul(sol)
-        for i, reroot, imroot in collectterms:
-            sol = collect(sol, x**i*exp(reroot*x)*sin(abs(imroot)*x))
-            sol = collect(sol, x**i*exp(reroot*x)*cos(imroot*x))
-        for i, reroot, imroot in collectterms:
-            sol = collect(sol, x**i*exp(reroot*x))
-        del collectterms
-        eq = Eq(f(x), sol)
+        for ieq, eq in enumerate(eqs):
+            sol = expand_mul(eq.rhs)
+            for i, reroot, imroot in collectterms:
+                sol = collect(sol, x**i*exp(reroot*x)*sin(abs(imroot)*x))
+                sol = collect(sol, x**i*exp(reroot*x)*cos(imroot*x))
+            for i, reroot, imroot in collectterms:
+                sol = collect(sol, x**i*exp(reroot*x))
+            del collectterms
+            eqs[ieq] = Eq(f(x), sol)
+    else:
+        # in case the C1 appears in multiple terms because of factoring
+        # expand_mul the rhs to (hopefully) make it re-absorb into one
+        for ie, e in enumerate(eqs):
+            # ignore e if it's not a solved form
+            if not (e.lhs == func and not e.rhs.has(func)):
+                continue
+            erhs = e.rhs
+            if str(erhs).count(C1.name) > 1:
+                erhs = expand_mul(erhs)
+                if str(erhs).count(C1.name) > 1:
+                    print "Better simplification is necessary:"
+                    print "%s appears more than once in %s" % (C1, e.rhs)
+                    print "and in it's expansion, %s" % (C1, erhs)
+                    assert None
+            eqs[ie] = Eq(f(x), erhs)
 
     # We cleaned up the costants before solving to help the solve engine with
     # a simpler expression, but the solved expression could have introduced
     # things like -C1, so rerun constantsimp() one last time before returning.
-    eq = ode_renumber(constantsimp(eq, x, 2*order), 'C', 1, 2*order)
+    for i, eq in enumerate(eqs):
+        eqs[i] = ode_renumber(constantsimp(eq, x, 2*order), 'C', 1, 2*order)
 
-    return eq
+    return iff(len(eqs) == 1, eqs[0], eqs)
 
 @vectorize(2)
 def checkodesol(ode, func, sol, order='auto', solve_for_func=True):
@@ -1196,9 +1214,15 @@ def constantsimp(expr, independentsymbol, endnumber, startnumber=1,
     # expression.
 
     from sympy.core import S
+    '''
     from sympy.utilities import any
     constantsymbols = [Symbol(symbolname+"%d" % t) for t in range(startnumber,
     endnumber + 1)]
+    '''
+    from sympy.utilities import any, numbered_symbols
+    c_iter = numbered_symbols(symbolname, start = startnumber)
+    constantsymbols = [c_iter.next() for i in range(
+                                     endnumber - startnumber + 1)]
     x = independentsymbol
 
     if isinstance(expr, Equality):
@@ -2031,9 +2055,9 @@ def ode_nth_linear_constant_coeff_homogeneous(eq, func, order, match, returns='s
     constant coefficients.
 
     This is an equation of the form a_n*f(x)^(n) + a_(n-1)*f(x)^(n-1) +
-    ... + a1*f'(x) + a0*f(x) = 0
+    ... + a1*f'(x) + a0*f(x) = 0 where f(x)^(n) represents D(f(x), x, n).
 
-    These equations can be solved in a general mannar, by taking the
+    These equations can be solved in a general manner, by taking the
     roots of the characteristic equation a_n*m**n + a_(n-1)*m**(n-1) +
     ... + a1*m + a0 = 0.  The solution will then be the sum of
     Cn*x**i*exp(r*x) terms, for each  where Cn is an arbitrary constant,
@@ -2178,7 +2202,7 @@ def ode_nth_linear_constant_coeff_undetermined_coefficients(eq, func, order, mat
     This method works on differential equations of the form a_n*f(x)^(n)
     + a_(n-1)*f(x)^(n-1) + ... + a1*f'(x) + a0*f(x) = P(x), where P(x)
     is a function that has a finite number of linearly independent
-    derivatives.
+    derivatives and f(x)^(n) represents D(f(x), x, n).
 
     Functions that fit this requirement are finite sums functions of the
     form a*x**i*exp(b*x)*sin(c*x + d) or a*x**i*exp(b*x)*cos(c*x + d),
@@ -2475,7 +2499,8 @@ def ode_nth_linear_constant_coeff_variation_of_parameters(eq, func, order, match
     coefficients using the method of undetermined coefficients.
 
     This method works on any differential equations of the form
-    f(x)^(n) + a_(n-1)*f(x)^(n-1) + ... + a1*f'(x) + a0*f(x) = P(x).
+    f(x)^(n) + a_(n-1)*f(x)^(n-1) + ... + a1*f'(x) + a0*f(x) = P(x)
+    where f(x)^(n) represents D(f(x), x, n).
 
     This method works by assuming that the particular solution takes the
     form Sum(c_i(x)*y_i(x), (x, 1, n)), where y_i is the ith solution to

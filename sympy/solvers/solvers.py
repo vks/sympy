@@ -330,7 +330,7 @@ def solve(f, *symbols, **flags):
             raise NotImplementedError("No algorithms are implemented to solve equation %s" % f)
 
         # This symbol swap should not be necessary for the single symbol case: if you've
-        # solved for the symbol the it will not appear in the solution. Right now, however
+        # solved for the symbol then it will not appear in the solution. Right now, however
         # ode's are getting solutions for solve (even though they shouldn't be -- see the
         # swap_back test in test_solvers).
         if symbol_swapped:

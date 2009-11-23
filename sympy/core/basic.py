@@ -1922,17 +1922,32 @@ class Basic(AssumeMeths):
            x/6
 
         """
+        from sympy.utilities import make_list
         c = sympify(c)
         if c is S.One:
             return self
         elif c == self:
             return S.One
         elif c.is_Mul:
-            x = self.extract_multiplicatively(c.as_two_terms()[0])
-            if x != None:
-                return x.extract_multiplicatively(c.as_two_terms()[1])
-        quotient = self / c
+            args = make_list(self, Mul)
+            for ci in c.args:
+                for j in range(len(args)):
+                    newarg = args[j].extract_multiplicatively(ci)
+                    if newarg:
+                        args[j] = newarg
+                        break
+                else:
+                    return None # made it through with no match
+            else:
+                return C.Mul(*args)
+        elif c.is_Pow:
+            cmul = c.expand(power_base=False, mul=False, log=False, multinomial=False) # only basic and power_exp
+            if cmul.is_Mul:
+                return self.extract_multiplicatively(cmul)
+            self = self.expand(power_base=False, mul=False, log=False, multinomial=False) # only basic and power_exp
+            # self and c are ready to handle below
         if self.is_Number:
+            quotient = self / c
             if self is S.Infinity:
                 if c.is_positive:
                     return S.Infinity
@@ -1968,35 +1983,40 @@ class Basic(AssumeMeths):
                 else:
                     return quotient
         elif self.is_NumberSymbol or self.is_Symbol or self is S.ImaginaryUnit:
+            quotient = self / c
             if quotient.is_Mul and len(quotient.args) == 2:
                 if quotient.args[0].is_Integer and quotient.args[0].is_positive and quotient.args[1] == self:
                     return quotient
             elif quotient.is_Integer:
                 return quotient
         elif self.is_Add:
-            newargs = []
-            for arg in self.args:
-                newarg = arg.extract_multiplicatively(c)
-                if newarg != None:
-                    newargs.append(newarg)
-                else:
+            newargs = list(self.args)
+            for i, arg in enumerate(self.args):
+                newargs[i] = arg.extract_multiplicatively(c)
+                if not newargs[i]:
                     return None
             return C.Add(*newargs)
         elif self.is_Mul:
-            for i in xrange(len(self.args)):
-                newargs = list(self.args)
-                del(newargs[i])
-                tmp = C.Mul(*newargs).extract_multiplicatively(c)
-                if tmp != None:
-                    return tmp * self.args[i]
+            args = list(self.args)
+            for i, a in enumerate(self.args):
+                newa = a.extract_multiplicatively(c)
+                if newa:
+                    args[i] = newa
+                    break
+            else:
+                return None
+            return C.Mul(*args)
         elif self.is_Pow:
             if c.is_Pow and c.base == self.base:
-                new_exp = self.exp.extract_additively(c.exp)
-                if new_exp != None:
+                if self.exp.is_integer and self.exp.is_Mul:
+                    new_exp = self.exp.extract_multiplicatively(c.exp)
+                else:
+                    new_exp = self.exp.extract_additively(c.exp)
+                if new_exp is not None:
                     return self.base ** (new_exp)
             elif c == self.base:
                 new_exp = self.exp.extract_additively(1)
-                if new_exp != None:
+                if new_exp is not None:
                     return self.base ** (new_exp)
 
     def extract_additively(self, c):
@@ -2031,7 +2051,7 @@ class Basic(AssumeMeths):
             return None
         elif c.is_Add:
             x = self.extract_additively(c.as_two_terms()[0])
-            if x != None:
+            if x is not None:
                 return x.extract_additively(c.as_two_terms()[1])
         sub = self - c
         if self.is_Number:
@@ -2065,11 +2085,11 @@ class Basic(AssumeMeths):
         elif self.is_Add:
             terms = self.as_two_terms()
             subs0 = terms[0].extract_additively(c)
-            if subs0 != None:
+            if subs0 is not None:
                 return subs0 + terms[1]
             else:
                 subs1 = terms[1].extract_additively(c)
-                if subs1 != None:
+                if subs1 is not None:
                     return subs1 + terms[0]
         elif self.is_Mul:
             self_coeff, self_terms = self.as_coeff_terms()
@@ -2077,11 +2097,11 @@ class Basic(AssumeMeths):
                 c_coeff, c_terms = c.as_coeff_terms()
                 if c_terms == self_terms:
                     new_coeff = self_coeff.extract_additively(c_coeff)
-                    if new_coeff != None:
+                    if new_coeff is not None:
                         return new_coeff * C.Mul(*self_terms)
             elif c == self_terms:
                 new_coeff = self_coeff.extract_additively(1)
-                if new_coeff != None:
+                if new_coeff is not None:
                     return new_coeff * C.Mul(*self_terms)
 
     def could_extract_minus_sign(self):
@@ -2095,20 +2115,38 @@ class Basic(AssumeMeths):
 
            >>> from sympy import *
 
-           >>> x, y = symbols("xy")
+           >>> x, y, z = symbols("xyz")
 
            >>> (x-y).could_extract_minus_sign() != (y-x).could_extract_minus_sign()
            True
 
+           When an expression is an Add and there is a number as one of the terms
+           then the value returned is based on the sign of that number.
+           >>> (-1-x).could_extract_minus_sign()
+           True
+           >>> (-1-x-y).could_extract_minus_sign()
+           True
+           >>> (1-x-y).could_extract_minus_sign()
+           False
+           >>> (1-x-y-z).could_extract_minus_sign()
+           False
+
         """
         from sympy.utilities.iterables import make_list
+        if self.is_Number:
+            return self.is_negative
         negative_self = -self
-        self_has_minus = (self.extract_multiplicatively(-1) != None)
-        negative_self_has_minus = ((negative_self).extract_multiplicatively(-1) != None)
+        self_has_minus = (self.extract_multiplicatively(-1) is not None)
+        negative_self_has_minus = ((negative_self).extract_multiplicatively(-1) is not None)
         if self_has_minus != negative_self_has_minus:
             return self_has_minus
         else:
             if self.is_Add:
+                # be consistent with as_coeff_terms(): base the sign extraction on
+                # the sign of any number in the Add:
+                #   -1 - x -y -> True but 1 - x - y -> False
+                if self.args[0].is_Number:
+                    return self.args[0] < 0
                 # We choose the one with less arguments with minus signs
                 all_args = len(self.args)
                 negative_args = len([False for arg in self.args if arg.could_extract_minus_sign()])

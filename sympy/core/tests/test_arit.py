@@ -1,5 +1,5 @@
 from sympy import Symbol, sin, cos, exp, O, sqrt, Rational, Real, re, pi, \
-        sympify, sqrt, Add, Mul, Pow, I, log
+        sympify, sqrt, Add, Mul, Pow, I, log, S
 from sympy.utilities.pytest import XFAIL
 
 x = Symbol('x')
@@ -138,17 +138,26 @@ def test_pow():
     assert (x**(y**(x+exp(x+y))+z)).expand(deep=False) == x**z*x**(y**(x + exp(x + y)))
     assert (x**(y**(x+exp(x+y))+z)).expand() == x**z*x**(y**x*y**(exp(x)*exp(y)))
 
-    n = Symbol('k', even=False)
-    k = Symbol('k', even=True)
+    ne = Symbol('not_evn', even=False)
+    e = Symbol('evn', even=True)
+    o = Symbol('odd', odd=True)
 
     assert (-1)**x == (-1)**x
-    assert (-1)**n == (-1)**n
-    assert (-2)**k == 2**k
-    assert (-1)**k == 1
+    assert (-1)**ne == (-1)**ne
+    assert (-2)**e == 2**e
+    assert (-1)**e == 1
+    assert (-1)**o == -1
+
+    # pow rearrangement
+    assert (x-y)**3 + (y-x)**3 == 0
+    v = Symbol('v')
+    w = Symbol('w')
+    assert ((x-y-v-w)*(x-y-v-2*w)*(x-y-v-4*w))**3 == \
+           -(w + y + v - x)**3*(y + v - x + 2*w)**3*(y + v - x + 4*w)**3
 
 @XFAIL
 def test_pow2():
-    # XXX These fail - they are maybe discutable,
+    # XXX These fail - they are maybe disputable,
     # let's see SAGE and similar.
     assert ((-x)**2)**Rational(1,3) == ((-x)**Rational(1,3))**2
     assert (-x)**Rational(2,3) == x**Rational(2,3)
@@ -182,9 +191,9 @@ def test_expand():
     e=(a+b+c)*(a+c+p)
     assert e == (5+a+c)*(a+b+c)
     assert e.expand() == 5*a+5*b+5*c+2*a*c+b*c+a*b+a**2+c**2
-    x=Symbol("x")
-    s=exp(x*x)-1
-    e=s.series(x,0,3)/x**2
+    x = Symbol("x")
+    s = exp(x*x) - 1
+    e = s.series(x,0,3)/x**2
     assert e.expand() ==  1+x**2/2+O(x**4)
 
     e = (x*(y+z))**(x*(y+z))*(x+y)

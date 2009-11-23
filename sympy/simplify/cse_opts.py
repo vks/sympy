@@ -6,7 +6,7 @@ from sympy.core.basic import Basic
 from sympy.core.operations import AssocOp
 from sympy.utilities.iterables import preorder_traversal
 
-from sympy import Add, Mul
+from sympy import Add, Mul, S
 
 
 def assumed(e, name):
@@ -46,9 +46,7 @@ def sub_pre(e):
             positives = []
             negatives = []
             for arg in node.args:
-                if (assumed(arg, 'is_Mul') and
-                    assumed(arg.args[0], 'is_number') and
-                    assumed(arg.args[0], 'is_negative')):
+                if arg.extract_multiplicatively(S.NegativeOne):
                     negatives.append(Mul(-arg.args[0], *arg.args[1:]))
                 else:
                     positives.append(arg)

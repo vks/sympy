@@ -264,7 +264,7 @@ def test_solve_for_functions_derivatives():
 
     soln = solve([a11*x + a12*y - b1, a21*x + a22*y - b2], x, y)
     assert soln == { y : (a11*b2 - a21*b1)/(a11*a22 - a12*a21),
-        x : (a22*b1 - a12*b2)/(a11*a22 - a12*a21) }
+                     x : (a22*b1 - a12*b2)/(a11*a22 - a12*a21) }
 
     assert solve(x-1, x) == [1]
     assert solve(3*x-2, x) == [Rational(2,3)]
@@ -272,7 +272,7 @@ def test_solve_for_functions_derivatives():
     soln = solve([a11*x.diff(t) + a12*y.diff(t) - b1, a21*x.diff(t) +
             a22*y.diff(t) - b2], x.diff(t), y.diff(t))
     assert soln == { y.diff(t) : (a11*b2 - a21*b1)/(a11*a22 - a12*a21),
-            x.diff(t) : (a22*b1 - a12*b2)/(a11*a22 - a12*a21) }
+                     x.diff(t) : (a22*b1 - a12*b2)/(a11*a22 - a12*a21) }
 
     assert solve(x.diff(t)-1, x.diff(t)) == [1]
     assert solve(3*x.diff(t)-2, x.diff(t)) == [Rational(2,3)]

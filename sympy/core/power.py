@@ -78,6 +78,10 @@ class Pow(Basic):
             return S.One
         if e is S.One:
             return b
+        if e is not S.NegativeOne and e.is_Integer and \
+           (not b.is_Number # handle below
+            and b.could_extract_minus_sign()):
+            return (S.NegativeOne)**e * (-b) ** e
         obj = b._eval_power(e)
         if obj is None:
             obj = Basic.__new__(cls, b, e, **assumptions)

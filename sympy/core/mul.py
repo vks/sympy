@@ -101,14 +101,13 @@ class Mul(AssocOp):
                 #         n          n          n
                 # (-3 + y)   ->  (-1)  * (3 - y)
                 if b.is_Add and e.is_Number:
-                    #found factor (x+y)**number; split off initial coefficient
                     c, t = b.as_coeff_terms()
-                    #last time I checked, Add.as_coeff_terms returns One or NegativeOne
-                    #but this might change
-                    if c.is_negative and not e.is_integer:
-                        # extracting root from negative number: ignore sign
+                    if not e.is_integer and c.is_negative:
+                        # Although at present Add.as_coeff_terms() returns +/-1
+                        # the following will still work if that changes
                         if c is not S.NegativeOne:
-                            # make c positive (probably never occurs)
+                            # extracting root from negative number: ignore sign
+                            # and make c positive
                             coeff *= (-c) ** e
                             assert len(t)==1,`t`
                             b = -t[0]
