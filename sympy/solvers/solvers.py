@@ -15,13 +15,20 @@
 
 from sympy.core.sympify import sympify
 from sympy.core.basic import S, Mul
+oo = S.Infinity
+
 from sympy.core.add import Add
 from sympy.core.power import Pow
 from sympy.core.symbol import Symbol, Wild
 from sympy.core.relational import Equality
-from sympy.core.numbers import ilcm
+from sympy.core.relational import Relational
+from sympy.core.relational import StrictInequality
+from sympy.core.relational import Inequality
+from sympy.core.relational import Unequality
+from sympy.core.sets import Interval, Set, EmptySet, Union, setizelist, listizeset
+from sympy.core.numbers import ilcm, Integer
 
-from sympy.functions import sqrt, log, exp, LambertW
+from sympy.functions import sqrt, log, exp, LambertW, sign
 from sympy.simplify import simplify, collect
 from sympy.matrices import Matrix, zeros
 from sympy.polys import roots
@@ -31,6 +38,7 @@ from sympy.utilities import any, all
 from sympy.utilities.iterables import iff
 from sympy.utilities.lambdify import lambdify
 from sympy.mpmath import findroot
+from sympy.logic.boolalg import And, Or, BooleanFunction
 
 from sympy.solvers.polysys import solve_poly_system
 
@@ -45,6 +53,8 @@ GS_POLY_CV_2 = 3 # can be converted to a polynomial equation multiplying on both
 GS_RATIONAL_CV_1 = 4 # can be converted to a rational equation via the change of variable y -> x**n
 GS_PIECEWISE = 5
 GS_TRANSCENDENTAL = 6
+GS_RELATION = -3
+GS_BOOLEAN = -2
 
 def guess_solve_strategy(expr, symbol):
     """
@@ -68,6 +78,8 @@ def guess_solve_strategy(expr, symbol):
 
     """
     eq_type = -1
+    if (expr in (True, False, None)) and ( not isinstance(expr, Integer)):
+        return GS_BOOLEAN
     if expr.is_Add:
         return max([guess_solve_strategy(i, symbol) for i in expr.args])
 
@@ -105,6 +117,12 @@ def guess_solve_strategy(expr, symbol):
     elif expr.is_Piecewise:
         return GS_PIECEWISE
 
+    elif issubclass(expr.__class__, Relational) and expr.has(symbol):
+        return GS_RELATION
+
+    elif isinstance(expr, BooleanFunction) and expr.has(symbol):
+        return GS_BOOLEAN
+
     elif expr.is_Function and expr.has(symbol):
         return GS_TRANSCENDENTAL
 
@@ -112,6 +130,7 @@ def guess_solve_strategy(expr, symbol):
         return GS_POLY
 
     return eq_type
+
 
 def solve(f, *symbols, **flags):
     """Solves equations and systems of equations.
@@ -145,7 +164,7 @@ def solve(f, *symbols, **flags):
 
     """
     def sympit(w):
-        return map(sympify, iff(isinstance(w,(list, tuple, set)), w, [w]))
+        return map(sympify, iff(isinstance(w, (list, tuple, set)), w, [w]))
     # make f and symbols into lists of sympified quantities
     # keeping track of how f was passed since if it is a list
     # a dictionary of results will be returned.
@@ -161,11 +180,11 @@ def solve(f, *symbols, **flags):
         #solve(3,x) returns []...though it seems that it should raise some sort of error TODO
         symbols = set([])
         for fi in f:
-            symbols |= fi.atoms(Symbol) or set([Symbol('x',dummy=True)])
+            symbols |= fi.atoms(Symbol) or set([Symbol('x', dummy=True)])
         symbols = list(symbols)
 
     if bare_f:
-        f=f[0]
+        f = f[0]
     if len(symbols) == 1:
         if isinstance(symbols[0], (list, tuple, set)):
             symbols = symbols[0]
@@ -203,6 +222,12 @@ def solve(f, *symbols, **flags):
 
     if not isinstance(f, (tuple, list, set)):
 
+        # shortcut to "solve" a number
+        if f.is_Number:
+            if f == 0:
+                return [Interval(-oo, oo)]
+            else:
+                return []
         # Create a swap dictionary for storing the passed symbols to be solved
         # for, so that they may be swapped back.
         if symbol_swapped:
@@ -319,8 +344,14 @@ def solve(f, *symbols, **flags):
                             result.add(candidate)
                 else:
                     for candidate in candidates:
-                        if bool(cond.subs(symbol, candidate)):
-                            result.add(candidate)
+                        if isinstance(candidate, Set):
+                            result.add(And(candidate.contains(symbol), cond).doit())
+                        else:
+                            c = cond.subs(symbol, candidate)
+                            if hasattr(c, 'doit'):
+                                c = c.doit()
+                            if bool(c):
+                                result.add(candidate)
 
             result = list(result)
 
@@ -330,6 +361,68 @@ def solve(f, *symbols, **flags):
             # assumptions, it should be checked, that for the solution,
             # b!=0.
             result = tsolve(f, *symbols)
+        elif strategy == GS_RELATION:
+            if len(symbols) != 1:
+               raise UnimplementedError(
+                   "multiple variable inequalities are not yet solvable")
+            x = symbols[0]
+            eq=f.args[0] - f.args[1]
+            fenceposts = solve(eq, *symbols)
+            fenceposts.sort()
+            fenceposts = fenceposts + [ oo ]
+            leftsign=sign(eq.diff(x).subs(x, fenceposts[0]))
+            result = []
+            leftval = - oo
+            for root in fenceposts:
+              if (f.__class__ == StrictInequality) and ( 0 < leftsign):
+                 result.append(Interval(leftval, root, left_open=True, right_open=True))
+              elif (f.__class__ == Inequality) and ( 0 < leftsign):
+                 result.append(Interval(leftval, root))
+              elif f.__class__ == Unequality:
+                 result.append(Interval(leftval, root, left_open=True, right_open=True))
+              leftval = root
+              leftsign = leftsign * -1
+            return result
+
+        elif strategy == GS_BOOLEAN:
+            if f in (True, False, None):
+                return f
+            if len(symbols) != 1:
+               raise UnimplementedError(
+                   "multiple variable bool equations are not yet solvable")
+            x = symbols[0]
+            if not isinstance(f, (And, Or)):
+                # FIXME: does this work for other boolean functions?
+                raise NotImplementedError(
+                    "don't know how to solve for class %s" % f.__class__)
+            if f.args[0] is True:
+                return solve(f.args[1])
+            if f.args[0] is False:
+                if isinstance(f, And):
+                     return False
+                elif isinstance(f, Or):
+                     return solve(f.args[1])
+            if f.args[0] is None:
+                return None
+            if f.args[1] is True:
+                return solve(f.args[0])
+            if f.args[1] is False:
+                if isinstance(f, And):
+                     return False
+                elif isinstance(f, Or):
+                     return solve(f.args[0])
+            if f.args[1] is None:
+                return None
+            left = setizelist(solve(f.args[0], x))
+            right = setizelist(solve(f.args[1], x))
+            if isinstance(f, And):
+                 result = left.intersect(right)
+            elif isinstance(f, Or):
+                 result = left.union(right)
+            else:
+               raise NotImplementedError("unimplemented boolean function %s" % f)
+            return listizeset(result)
+
         elif strategy == -1:
             raise ValueError('Could not parse expression %s' % f)
         else:
@@ -438,11 +531,11 @@ def solve_linear_system(system, *symbols, **flags):
     while i < matrix.rows:
         if i == m:
             # an overdetermined system
-            if any(matrix[i:,m]):
+            if any(matrix[i:, m]):
                 return None   # no solutions
             else:
                 # remove trailing rows
-                matrix = matrix[:i,:]
+                matrix = matrix[:i, :]
                 break
 
         if not matrix[i, i]:
@@ -572,16 +665,16 @@ def solve_undetermined_coeffs(equ, coeffs, sym, **flags):
 def solve_linear_system_LU(matrix, syms):
     """ LU function works for invertible only """
     assert matrix.rows == matrix.cols-1
-    A = matrix[:matrix.rows,:matrix.rows]
-    b = matrix[:,matrix.cols-1:]
+    A = matrix[:matrix.rows, :matrix.rows]
+    b = matrix[:, matrix.cols-1:]
     soln = A.LUsolve(b)
     solutions = {}
     for i in range(soln.rows):
-        solutions[syms[i]] = soln[i,0]
+        solutions[syms[i]] = soln[i, 0]
     return solutions
 
-x = Symbol('x', dummy=True)
-a,b,c,d,e,f,g,h = [Wild(t, exclude=[x]) for t in 'abcdefgh']
+x = Symbol('x', dummy= True)
+a, b, c, d, e, f, g, h = [Wild(t, exclude=[x]) for t in 'abcdefgh']
 patterns = None
 
 def _generate_patterns():

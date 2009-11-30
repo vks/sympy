@@ -1176,7 +1176,12 @@ class Basic(AssumeMeths):
             args = self.args
         else:
             args = (self.func,)+self
-        return self.__class__(*[s.subs(old, new) for s in args])
+        sargs = []
+        for s in args:
+            if hasattr(s, 'subs'):
+               s = s.subs(old, new)
+            sargs.append(s)
+        return self.__class__(*sargs)
 
     def __contains__(self, what):
         if self == what or self.is_Function and self.func == what: return True

@@ -1,4 +1,4 @@
-from sympy import symbols, oo
+from sympy import symbols, oo, Interval, solve, Rational
 from sympy.core.relational import Relational, Equality, StrictInequality, \
     Rel, Eq, Lt, Le, Gt, Ge, Ne
 
@@ -77,3 +77,12 @@ def test_rel_Infinity():
     assert (-oo <= oo) is True
     assert (-oo <= -oo) is True
     assert (-oo <= 1) is True
+
+def test_rel_inequalities():
+    assert solve (x**2 - 10 > 3 * x,x) == [ Interval(-oo,-2,True,True), Interval(5,oo,True,True)]
+    #fails assert solve(x**4+4*x**3-12*x**2>0,x) == [ Interval(-oo,-6,True,False), Interval(2,oo,False,True)]
+    assert solve(3*x**2 > 2*x + 11,x) == [Interval(-oo, Rational(1, 3) - 34**(Rational(1, 2))/3,True,True), Interval(Rational(1, 3) + 34**(Rational(1, 2))/3, oo,True,True)]
+    #fails assert solve((x-3)/(x+2)>=0,x) == [ Interval(-oo,-2,True,True), Interval(3,oo,False,True)]
+    #fails assert solve((x**2-3*x-10)/(x-1)<0,x) == [ Interval(-oo,-2,True,True), Interval(1,5,True,True)]
+    #fails assert solve(2*x/(x+1)>=3) == [ Interval(-3,-1,False,True)]
+

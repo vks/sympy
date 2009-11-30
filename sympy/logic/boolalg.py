@@ -1,13 +1,114 @@
 """Boolean algebra module for SymPy"""
-from sympy.core import Basic, Function, sympify, Symbol
+from sympy.core import Basic, Function, sympify, Symbol, NoUnionError
 from sympy.utilities import flatten, make_list
 from sympy.core.operations import LatticeOp
-
+from sympy.core.relational import Relational
 
 class BooleanFunction(Function):
     """Boolean function is a function that lives in a boolean space
     It is used as base class for And, Or, Not, etc.
     """
+    @staticmethod
+    def _permute(l, ret=None):
+        if ret == None:
+            return BooleanFunction._permute(l[1:], ret=l[0])
+        if len(l) == 0:
+            return ret
+        rr = []
+        for r in ret:
+            for term in l[0]:
+                rr.append(And(r, term))
+        return BooleanFunction._permute(l[1:], ret=rr)
+
+    def _canonize(self, **hints):
+        rel = to_cnf(self)
+        if isinstance(rel, Or):
+            return(rel)
+        if not isinstance(rel, BooleanFunction):
+            return rel
+        args = []
+        for arg in rel.args:
+            if type(arg) is not Or:
+                args.append([arg])
+            else:
+                args.append(list(arg.args))
+        terms = self._permute(args)
+        return Or(*terms)
+
+    def doit(self, **hints):
+        """
+        Simplify logic expression by intersection and union of relational and interval terms.
+        Examples:
+            >>> from sympy import *
+            >>> from sympy.logic.boolalg import And, Not, Or, to_cnf
+            >>> x, l1, l2, l3=symbols("x l1 l2 l3")
+            >>> c=Or(And(0 <= x, x <= l1 + l2, l1 < 0), And(0 <= x, x <= l1 + l2, l1 + l2 + l3 < 0))
+            >>> x1, l11, l21, l31=symbols("x1 l11 l21 l31", real=True, positive=True)
+            >>> d=c.subs([(x, x1), (l1, l11), (l2, l21), (l3, l31)])
+            >>> d.doit()
+            False
+        """
+        r = to_cnf(self)
+        if isinstance(r, BooleanFunction):
+            r = r._doit(**hints)
+        if isinstance(r, BooleanFunction):
+            r = r._canonize(**hints)
+        if isinstance(r, BooleanFunction):
+            r = r._doit(**hints)
+        return r
+
+    def _doit(self, **hints):
+        """Try to symplify the boolean function by looking for
+        terms occuring more than once, and using
+        a and b = a intersection b
+        and
+        a or b = a union b
+        """
+        if not hasattr(self, '_set_method'):
+            #we can do it only for And and Or
+            return self
+        setmethod = self._set_method
+        terms = []
+        # doit for all terms
+        for term in self.args:
+            term = term.doit(**hints)
+            terms.append(term)
+        terms2 = []
+        # drop terms which are not first occurance
+        for term in terms:
+            if term in terms2:
+                continue
+            #and if there are two complement terms, we return
+            # True or false
+            if hasattr(term, 'complement'):
+                if term.complement() in terms2:
+                    return self.__class__(True, False)
+            terms2.append(term)
+        terms3 = []
+        dealtwith = []
+        # now we do union for Or, intersection for And
+        for i, term in enumerate(terms2):
+            if i in dealtwith:
+                continue
+            if hasattr(term, setmethod):
+                # FIXME python sets are not handled here
+                # sympify should convert them to sympy.core.sets.Set
+                for j, term2 in enumerate(terms2):
+                    if (j not in dealtwith) and (i <= j):
+                        try:
+                            term = getattr(term, setmethod)(term2)
+                            dealtwith.append(j)
+                            if hasattr(term, 'doit'):
+                                term = term.doit(**hints)
+                        except NoUnionError:
+                            pass
+                        if not hasattr(term, setmethod):
+                            break
+            if term not in terms3:
+                terms3.append(term)
+        if len(terms3) == 1:
+            return terms3[0]
+        return self.__class__(*terms3)
     pass
 
 class And(LatticeOp, BooleanFunction):
@@ -26,6 +127,28 @@ class And(LatticeOp, BooleanFunction):
     """
     zero = False
     identity = True
+    _set_method = "_intersection"
+
+    @classmethod
+    def eval(cls, *args):
+        out_args = []
+        for arg in args: # we iterate over a copy or args
+            if hasattr(arg, 'eval') and (not isinstance(arg, BooleanFunction)):
+                 arg = arg.eval(*arg.args)
+            else:
+                 arg = arg
+            if arg is None:
+                return None
+            if isinstance(arg, bool):
+                if not arg: return False
+                else: continue
+            out_args.append(arg)
+        if len(out_args) == 0:
+            return True
+        if len(out_args) == 1:
+            return out_args[0]
+        sargs = sorted(flatten(out_args, cls=cls))
+        return Basic.__new__(cls, *sargs)
 
 class Or(LatticeOp, BooleanFunction):
     """
@@ -36,6 +159,22 @@ class Or(LatticeOp, BooleanFunction):
     """
     zero = True
     identity = False
+    _set_method = "_union"
+
+    @classmethod
+    def eval(cls, *args):
+        out_args = []
+        for arg in args: # we iterate over a copy or args
+            if isinstance(arg, bool):
+                if arg: return True
+                else: continue
+            out_args.append(arg)
+        if len(out_args) == 0:
+            return False
+        if len(out_args) == 1:
+            return out_args[0]
+        sargs = sorted(flatten(out_args, cls=cls))
+        return Basic.__new__(cls, *sargs)
 
 class Xor(BooleanFunction):
     """Logical XOR (exclusive OR) function.
@@ -70,6 +209,15 @@ class Not(BooleanFunction):
             return not arg
         if type(arg) is Not:
             return arg.args[0]
+
+    def doit(self, **hints):
+        assert len(self.args) == 1, "Multiarg Not is Not supported"
+        term= self.args[0]
+        term = term.doit(**hints)
+        if isinstance(term, Relational):
+            return term.complement()
+        return self.new(term)
+
 
 class Nand(BooleanFunction):
     """Logical NAND function.
@@ -201,7 +349,7 @@ def eliminate_implications(expr):
     operators.
     """
     expr = sympify(expr)
-    if expr.is_Atom:
+    if (type(expr) is bool) or expr.is_Atom:
         return expr     ## (Atoms are unchanged.)
     args = map(eliminate_implications, expr.args)
     a, b = args[0], args[-1]
@@ -250,3 +398,4 @@ def to_int_repr(clauses, symbols):
         else:
             output.append([append_symbol(c, symbols)])
     return output
+
