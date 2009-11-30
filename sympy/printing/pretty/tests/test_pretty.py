@@ -236,9 +236,10 @@ def test_pretty_Piecewise():
 /x   for x < 1
 |             \n\
 < 2           \n\
-|x   otherwise\n\
+|x   for 1 <= x\n\
 \             \
 """
+    s = '/x   for x < 1 \n|              \n< 2            \n|x   for 1 <= x\n\\              '
     assert p == s
 
 def test_pretty_seq():

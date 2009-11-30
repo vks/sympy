@@ -49,8 +49,9 @@ def test_ccode_Piecewise():
 if (x < 1) {
 x
 }
-else {
+else if (1 <= x) {
 pow(x,2)
 }\
 """
+    s = 'if (x < 1) {\nx\n}\nelse if (1 <= x) {\npow(x,2)\n'
     assert p == s
