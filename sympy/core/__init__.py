@@ -1,7 +1,7 @@
 """Core module. Provides the basic operations needed in sympy.
 """
 
-from basic import Basic, S, C, sympify
+from basic import Basic, S, C, sympify, NoUnionError
 from symbol import Symbol, Wild, symbols, var
 from numbers import Number, Real, Rational, Integer, NumberSymbol,\
         RealNumber, igcd, ilcm, seterr

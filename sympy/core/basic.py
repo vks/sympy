@@ -6,6 +6,8 @@ from decorators import _sympifyit
 from assumptions import AssumeMeths, make__get_assumption
 from cache import cacheit
 
+class NoUnionError(ValueError):
+    pass
 
 # used for canonical ordering of symbolic sequences
 # via __cmp__ method:

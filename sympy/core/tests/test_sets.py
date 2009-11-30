@@ -1,4 +1,4 @@
-from sympy import Symbol, Set, Union, Interval, oo, S, Inequality, max_, min_, raises
+from sympy import Symbol, Set, Union, Interval, oo, S, Inequality, max_, min_, raises, NoUnionError
 from sympy.mpmath import mpi
 
 def test_interval_arguments():
@@ -59,7 +59,7 @@ def test_union():
 
     assert Union(Set()) == Set()
 
-    raises(ValueError, "Union(1, 2, 3)")
+    raises(NoUnionError, "Union(1, 2, 3)")
 
 def test_difference():
     assert Interval(1, 3) - Interval(1, 2) == Interval(2, 3, True)

@@ -1,6 +1,33 @@
-from basic import Basic, SingletonMeta, S
+from basic import Basic, SingletonMeta, S, NoUnionError
 from sympify import _sympify
 from sympy.mpmath import mpi
+
+def setizelist(l):
+    left = EmptySet()
+    for i in l:
+        if i.is_real:
+            left = left.union(Interval(i, i))
+        elif isinstance(i, Interval) or isinstance(i, Union):
+            left = left.union(i)
+        else:
+            raise NotImplementedError(
+               "Only real values or intervals supported in bool equations")
+    return left
+
+def deinterval(i):
+    if i.args[0] == i.args[1]:
+        return i.args[0]
+    return i
+
+def listizeset(s):
+    l = []
+    if isinstance(s,EmptySet):
+        return l
+    if isinstance(s,Interval):
+        return [deinterval(s)]
+    for i in s.args:
+        l.append(deinterval(i))
+    return l
 
 class Set(Basic):
     """
@@ -31,6 +58,9 @@ class Set(Basic):
 
         """
         return Union(self, other)
+
+    def _union(self,other):
+        return union(self,other)
 
     def intersect(self, other):
         """
@@ -124,7 +154,11 @@ class Set(Basic):
         return self._contains(other)
 
     def _contains(self, other):
-        raise NotImplementedError("(%s)._contains(%s)" % (self, other))
+        """Self contains other in strict sense."""
+        for element in self.args:
+          if element == other:
+             return True
+        return False
 
     def subset(self, other):
         """
@@ -312,28 +346,25 @@ class Interval(Set):
         if not isinstance(other, Interval):
             return other.intersect(self)
 
-        if not self._is_comparable(other):
-            raise NotImplementedError("Intersection of intervals with symbolic "
-                                      "end points is not yet implemented")
-
         empty = False
 
-        if self.start <= other.end and other.start <= self.end:
+        if (((other.end == self.start ) or (other.end - self.start).is_positive) and
+            ((self.end == other.start ) or (self.end - other.start).is_positive)):
             # Get topology right.
-            if self.start < other.start:
+            if (other.start - self.start).is_positive:
                 start = other.start
                 left_open = other.left_open
-            elif self.start > other.start:
+            elif (self.start - other.start).is_positive:
                 start = self.start
                 left_open = self.left_open
             else:
                 start = self.start
                 left_open = self.left_open or other.left_open
 
-            if self.end < other.end:
+            if (other.end - self.end).is_positive:
                 end = self.end
                 right_open = self.right_open
-            elif self.end > other.end:
+            elif (self.end - other.end).is_positive:
                 end = other.end
                 right_open = other.right_open
             else:
@@ -343,8 +374,11 @@ class Interval(Set):
             if end - start == 0 and (left_open or right_open):
                 empty = True
         else:
-            empty = True
-
+            if (self.start > other.end) or (other.start > self.end):
+                empty = True
+            else:
+                raise NotImplementedError("Intersection of intervals with symbolic "
+                           "end points is not yet implemented: %s, %s" % (self, other))
         if empty:
             return S.EmptySet
 
@@ -424,7 +458,7 @@ class Union(Set):
                 other_sets.append(arg)
 
             else:
-                raise ValueError, "Unknown argument '%s'" % arg
+                raise NoUnionError("Unknown argument '%s'" % arg)
 
         # Any non-empty sets at all?
         if len(intervals) == 0 and len(other_sets) == 0:
