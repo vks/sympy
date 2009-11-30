@@ -1,11 +1,16 @@
-
 from sympy.core.basic import Basic, S
+oo = S.Infinity
 from sympy.core.function import Function, diff
 from sympy.core.numbers import Number
 from sympy.core.relational import Relational
+from sympy.logic.boolalg import BooleanFunction, Not, And, Or
 from sympy.core.sympify import sympify
+from sympy.core.sets import Interval, Set, EmptySet, Union
+from sympy import nan
+
 
 from sympy.utilities.decorator import deprecated
+
 
 class ExprCondPair(Basic):
     """Represents an expression, condition pair."""
@@ -67,18 +72,27 @@ class Piecewise(Function):
     is_Piecewise = True
 
     def __new__(cls, *args, **options):
+        from sympy.solvers.solvers import solve
+        from sympy.core.symbol import Symbol
         # (Try to) sympify args first
         newargs = []
+        conds = False
         for ec in args:
             pair = ExprCondPair(*ec)
             cond_type = type(pair.cond)
             if not (cond_type is bool or issubclass(cond_type, Relational) or \
-                    issubclass(cond_type, Number)):
+                    issubclass(cond_type, Number) or issubclass(cond_type, BooleanFunction)):
                 raise TypeError, \
                     "Cond %s is of type %s, but must be a bool," \
-                    " Relational or Number" % (pair.cond, cond_type)
-            newargs.append(pair)
-
+                    " Relational, Logic or Number" % (pair.cond, cond_type)
+            cond = And(pair.cond , ( Not(conds) ))
+            if hasattr(cond, 'doit'):
+                cond = cond.doit()
+            conds = Or(conds, pair.cond)
+            if hasattr(conds, 'doit'):
+                conds = conds.doit()
+            if cond is not False:
+                newargs.append(ExprCondPair(pair.expr, cond))
         r = cls.eval(*newargs)
 
         if r is None:
@@ -135,26 +149,21 @@ class Piecewise(Function):
             newargs.append((e, c))
         return Piecewise(*newargs)
 
-    def _eval_integral(self,x):
+    def _eval_integral(self, x):
         from sympy.integrals import integrate
         return  Piecewise(*[(integrate(e, x), c) for e, c in self.args])
-
-    def _eval_interval(self, sym, a, b):
-        """Evaluates the function along the sym in a given interval ab"""
-        # FIXME: Currently only supports conds of type sym < Num, or Num < sym
-        int_expr = []
-        mul = 1
-        if a > b:
-            a, b, mul = b, a, -1
-        default = None
-
-        # Determine what intervals the expr,cond pairs affect.
+    def _intervals(self, sym, a, b):
+        # Determine what intervals the expr, cond pairs affect.
         # 1) If cond is True, then log it as default
         # 1.1) Currently if cond can't be evaluated, throw NotImplentedError.
         # 2) For each inequality, if previous cond defines part of the interval
         #    update the new conds interval.
-        #    -  eg x < 1, x < 3 -> [oo,1],[1,3] instead of [oo,1],[oo,3]
+        #    -  eg x < 1, x < 3 -> [oo, 1], [1, 3] instead of [oo, 1], [oo, 3]
         # 3) Sort the intervals to make it easier to find correct exprs
+        from sympy.solvers.solvers import solve
+        int_expr = []
+        default = None
+        fullset = EmptySet()
         for expr, cond in self.args:
             if isinstance(cond, bool) or cond.is_Number:
                 if cond:
@@ -162,51 +171,69 @@ class Piecewise(Function):
                     break
                 else:
                     continue
-            curr = list(cond.args)
-            if cond.args[0] == sym:
-                curr[0] = S.NegativeInfinity
-            elif cond.args[1] == sym:
-                curr[1] = S.Infinity
+            for range in solve(cond, sym):
+                if isinstance(range, Set):
+                   if isinstance(range, EmptySet):
+                      continue
+                else:
+                   raise NotImplementedError(
+                       "is it possible to have no Set as solution of the condition?")
+                r = ( - fullset ).intersect(range)
+                fullset = fullset + range
+                if not isinstance(r, EmptySet):
+                    int_expr.append((r, expr))
+
+        if default is not None:
+            for (range, expr) in int_expr:
+                fullset = fullset + range
+            holes = - fullset
+            if not isinstance(holes, EmptySet):
+                if isinstance(holes, Interval):
+                    int_expr.append((holes, default,))
+                elif isinstance(holes, Union):
+                    for range in holes.args:
+                     int_expr.append((range, default,))
+                else:
+                    raise ProgrammingError, "e?"
+        int_expr.sort(key = lambda x:x[0].start)
+        return int_expr
+
+    def _eval_interval(self, x, a, b):
+        """Evaluate the function along the sym in a given interval ab."""
+        # FIXME: Currently only supports conds of type sym < Num, or Num < sym
+        mul = 1
+        if a > b:
+            a, b, mul = b, a, -1
+
+        i = self._intervals(x, a, b)
+        from sympy.series import limit
+        lastend = None
+        pieces = []
+        for ( range, v ) in i:
+            adduend = limit(v, x, range.end, dir="-")
+            if lastend is None:
+                p = (v, range.contains(x))
+                lastend=adduend
             else:
-                raise NotImplementedError, \
-                    "Currently only supporting evaluation with only " \
-                    "sym on one side of the relation."
-            curr = [max(a, curr[0]), min(b, curr[1])]
-            for n in xrange(len(int_expr)):
-                if self.__eval_cond(curr[0] < int_expr[n][1]) and \
-                        self.__eval_cond(curr[0] >= int_expr[n][0]):
-                    curr[0] = int_expr[n][1]
-                if self.__eval_cond(curr[1] > int_expr[n][0]) and \
-                        self.__eval_cond(curr[1] <= int_expr[n][1]):
-                    curr[1] = int_expr[n][0]
-            if self.__eval_cond(curr[0] < curr[1]):
-                int_expr.append(curr + [expr])
-        int_expr.sort(key=lambda x:x[0])
+                minuend = limit(v, x, range.start, dir="+")
+                p = (v - minuend + lastend, range.contains(x))
+                lastend = adduend - minuend + lastend
+            pieces.append(p)
+        r = Piecewise(*pieces)
+        return  mul*(r.subs(x, b) - r.subs(x, a))
 
-        # Add holes to list of intervals if there is a default value,
-        # otherwise raise a ValueError.
-        holes = []
-        curr_low = a
-        for int_a, int_b, expr in int_expr:
-            if curr_low < int_a:
-                holes.append([curr_low, min(b, int_a), default])
-            curr_low = int_b
-            if curr_low > b:
-                break
-        if curr_low < b:
-            holes.append([curr_low, b, default])
+        # FIXME: Currently only supports conds of type sym < Num, or Num < sym
+        mul = 1
+        if a > b:
+            a, b, mul = b, a, -1
+        return mul*(self.subs(sym, b) - self.subs(sym, a))
 
-        if holes and default != None:
-            int_expr.extend(holes)
-        elif holes and default == None:
-            raise ValueError, "Called interval evaluation over piecewise " \
-                              "function on undefined intervals %s" % \
-                              ", ".join([str((h[0], h[1])) for h in holes])
 
+        int_expr = self._intervals(sym, a, b)
         # Finally run through the intervals and sum the evaluation.
         ret_fun = 0
-        for int_a, int_b, expr in int_expr:
-            ret_fun += expr._eval_interval(sym,  max(a, int_a), min(b, int_b))
+        for range, expr in int_expr:
+            ret_fun += expr._eval_interval(sym, max(a, range.start), min(b, range.end))
         return mul * ret_fun
 
     def _eval_derivative(self, s):
@@ -226,10 +253,32 @@ class Piecewise(Function):
     @classmethod
     def __eval_cond(cls, cond):
         """Returns S.One if True, S.Zero if False, or None if undecidable."""
-        if type(cond) == bool or cond.is_number or (cond.args[0].is_Number and cond.args[1].is_Number):
+        if hasattr(cond, 'doit'):
+            cond.doit()
+        if (type(cond) == bool or cond.is_number or 
+            (isinstance(cond, Relational) and cond.args[0].is_Number and
+              cond.args[1].is_Number)):
             if cond: return S.One
             return S.Zero
+        elif ( not isinstance(cond, BooleanFunction)) and cond.is_number:
+            if cond > 0: return S.One
+            return S.Zero
         return None
+
+def _pw_vs_pw(expr, args):
+    if not isinstance(expr, Piecewise):
+        return args
+    n_a = []
+    for expr, cond in args:
+        if isinstance(expr, Piecewise):
+            for (e1, c1) in expr.args:
+                if isinstance(c1, bool):
+                    (c1, cond) = (cond, c1)
+                n_a.append(ExprCondPair(e1, c1 & cond))
+        else:
+            n_a.append(ExprCondPair(expr, cond))
+    return n_a
+
 
 def piecewise_fold(expr):
     """
@@ -254,9 +303,9 @@ def piecewise_fold(expr):
             piecewise_args.append(n)
     if len(piecewise_args) > 0:
         n = piecewise_args[0]
-        new_args = [(expr.__class__(*(new_args[:n] + [e] + new_args[n+1:])), c) \
+        new_args = [(expr.__class__(*(new_args[:n] + [e] + new_args[n + 1:])), c) \
                         for e, c in new_args[n].args]
         if len(piecewise_args) > 1:
-            return piecewise_fold(Piecewise(*new_args))
-    return Piecewise(*new_args)
+            return piecewise_fold(Piecewise(*_pw_vs_pw(expr, new_args)))
+    return Piecewise(*_pw_vs_pw(expr, new_args))
 
