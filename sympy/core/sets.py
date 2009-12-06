@@ -175,7 +175,7 @@ class Set(Basic):
         if isinstance(other, Set):
             return self.intersect(other) == other
         else:
-            raise ValueError, "Unknown argument '%s'" % other
+            raise ValueError("Unknown argument '%s'" % other)
 
     @property
     def measure(self):
@@ -261,7 +261,7 @@ class Interval(Set):
 
         # Only allow real intervals (use symbols with 'is_real=True').
         if not start.is_real or not end.is_real:
-            raise ValueError, "Only real intervals are supported"
+            raise ValueError("Only real intervals are supported")
 
         # Make sure that the created interval will be valid.
         if end.is_comparable and start.is_comparable:
