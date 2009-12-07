@@ -13,7 +13,7 @@ def Rel(a, b, op):
     y == x + x**2
 
     """
-    return Relational(a,b,op)
+    return Relational(a, b, op)
 
 def Eq(a, b=0):
     """
@@ -27,7 +27,7 @@ def Eq(a, b=0):
     y == x + x**2
 
     """
-    return Relational(a,b,'==')
+    return Relational(a, b, '==')
 
 def Ne(a, b):
     """
@@ -41,7 +41,7 @@ def Ne(a, b):
     y != x + x**2
 
     """
-    return Relational(a,b,'!=')
+    return Relational(a, b, '!=')
 
 def Lt(a, b):
     """
@@ -55,7 +55,7 @@ def Lt(a, b):
     y < x + x**2
 
     """
-    return Relational(a,b,'<')
+    return Relational(a, b, '<')
 
 def Le(a, b):
     """
@@ -69,7 +69,7 @@ def Le(a, b):
     y <= x + x**2
 
     """
-    return Relational(a,b,'<=')
+    return Relational(a, b, '<=')
 
 def Gt(a, b):
     """
@@ -83,7 +83,7 @@ def Gt(a, b):
     x + x**2 < y
 
     """
-    return Relational(a,b,'>')
+    return Relational(a, b, '>')
 
 def Ge(a, b):
     """
@@ -97,7 +97,7 @@ def Ge(a, b):
     x + x**2 <= y
 
     """
-    return Relational(a,b,'>=')
+    return Relational(a, b, '>=')
 
 class Relational(Basic):
 
@@ -120,7 +120,8 @@ class Relational(Basic):
             rop_cls = cls
         else:
             rop_cls, swap = Relational.get_relational_class(rop)
-            if swap: lhs, rhs = rhs, lhs
+            if swap:
+                lhs, rhs = rhs, lhs
         obj = Basic.__new__(rop_cls, lhs, rhs, **assumptions)
         return obj
 
@@ -133,7 +134,8 @@ class Relational(Basic):
         return self._args[1]
 
     def _eval_subs(self, old, new):
-        return self.__class__(self.lhs._eval_subs(old, new), self.rhs._eval_subs(old, new))
+        return self.__class__(self.lhs._eval_subs(old, new),
+                              self.rhs._eval_subs(old, new))
 
     def _evals(self):
         if (self.rhs - self.lhs).is_positive:
@@ -235,8 +237,8 @@ class Unequality(Relational):
         return self.new(lhs,rhs)
 
     def _union(self,other):
-        if not isinstance(other,Relational):
-            raise NoUnionError, "Relational can be united with Relational only"
+        if not isinstance(other, Relational):
+            raise NoUnionError("Relational can be united with Relational only")
         if (((type(other) == Unequality) or (type(other) == StrictInequality)
              or (type(other) == Inequality)) and
            ((((self.lhs == other.lhs) and (self.rhs == other.rhs)) or
@@ -334,7 +336,7 @@ class Inequality(Relational):
         if a == c:
             if (d - a).is_positive:
                 return True
-            elif (a == d):
+            elif a == d:
                 if other.new == Inequality:
                     return True
                 elif b == d or b == c:
@@ -385,7 +387,7 @@ class Inequality(Relational):
                 else:
                     return Unequality(c, d)
             elif b == d:
-                if ( other.new == Inequality ):
+                if other.new == Inequality:
                     return True
                 else:
                     return self.new(a, d)
