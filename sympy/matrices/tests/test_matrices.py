@@ -1412,3 +1412,13 @@ def test_SMatrix_add():
     b = SMatrix(100, 100, lambda i, j : 1 if i != 0 and j % i == 0 else 0)
     assert (len(a.mat) + len(b.mat) - len((a+b).mat) > 0)
 
+def test_Matrix_berkowitz_charpoly():
+    x, UA, K_i, K_w = symbols('x UA K_i K_w')
+
+    A = Matrix([[-K_i - UA + K_i**2/(K_i + K_w),       K_i*K_w/(K_i + K_w)],
+                [           K_i*K_w/(K_i + K_w), -K_w + K_w**2/(K_i + K_w)]])
+
+    assert A.berkowitz_charpoly(x) == \
+        Poly(x**2 + (K_i*UA + K_w*UA + 2*K_i*K_w)/(K_i + K_w)*x
+             + K_i*K_w*UA/(K_i + K_w), x, domain='ZZ(K_i,K_w,UA)')
+
