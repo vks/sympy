@@ -46,13 +46,13 @@ def check(a, check_attr = True):
             continue
         def c(a,b,d):
             for i in d:
-                if not hasattr(a,i):
+                if not hasattr(a,i) or i in ['__dict__']:
                     continue
                 attr = getattr(a,i)
                 if not hasattr(attr, "__call__"):
                     assert hasattr(b,i), i
                     assert getattr(b,i)==attr
-        c(a,b,d1)
+        c(a, b, d1)
         c(b,a,d2)
 
 
@@ -74,7 +74,7 @@ def test_core_symbol():
         check(c)
 
 def test_core_numbers():
-    for c in (Catalan, Catalan(), ComplexInfinity, ComplexInfinity(),
+    for c in (Rational(1, 3), Catalan, Catalan(), ComplexInfinity, ComplexInfinity(),
               EulerGamma, EulerGamma(), Exp1, Exp1(), GoldenRatio, GoldenRatio(),
               Half, Half(), ImaginaryUnit, ImaginaryUnit(), Infinity, Infinity(),
               Integer, Integer(2), NaN, NaN(), NegativeInfinity,
