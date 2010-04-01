@@ -267,11 +267,12 @@ def to_int_repr(clauses, symbols):
         True
 
     """
+    from sympy.utilities import make_list
     def append_symbol(arg, symbols):
         if arg.func is Not:
             return -(symbols.index(arg.args[0])+1)
         else:
             return symbols.index(arg)+1
 
-    return [set(append_symbol(arg, symbols) for arg in make_list(c, Or)) \
+    return [set(append_symbol(arg, symbols) for arg in make_list(c, Or))
                                                             for c in clauses]
