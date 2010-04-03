@@ -151,3 +151,4 @@ class Predicate(Boolean):
 
     def remove_handler(self, handler):
         self.handlers.remove(handler)
+
