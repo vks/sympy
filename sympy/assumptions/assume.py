@@ -132,4 +132,4 @@ def eliminate_assume(expr, symbol=None):
     args = []
     for a in expr.args:
         args.append(eliminate_assume(a))
-    return type(expr)(*args)
+    return expr.func(*args)
