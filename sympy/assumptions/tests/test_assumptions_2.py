@@ -1,9 +1,9 @@
 """rename this to test_assumptions.py when the old assumptions system is deleted"""
 from sympy.core import symbols
-from sympy.assumptions import Assume, global_assumptions, Predicate
+from sympy.assumptions import (Assume, global_assumptions, get_local_assumptions,
+    set_local_assumptions, ask, Q, Predicate)
 from sympy.assumptions.assume import eliminate_assume
 from sympy.printing import pretty
-from sympy.assumptions.ask import Q
 from sympy.utilities.pytest import XFAIL
 
 def test_assume():
@@ -64,3 +64,19 @@ def test_global():
     global_assumptions.clear()
     assert not Assume(x>0) in global_assumptions
     assert not Assume(y>0) in global_assumptions
+
+def test_local():
+    x, y = symbols('x y')
+    set_local_assumptions()
+    a = get_local_assumptions()
+    a.add(Assume(x, Q.positive))
+    def localfunc():
+        assert Assume(x, Q.positive) in get_local_assumptions()
+        assert ask(x, Q.positive) == True
+        b = set_local_assumptions()
+        assert not b is a
+        b.add(Assume(x, Q.negative))
+        assert ask(x, Q.positive) == False
+    localfunc()
+    assert a
+    assert ask(x, Q.positive) == True
