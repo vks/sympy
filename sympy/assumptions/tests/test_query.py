@@ -1,6 +1,6 @@
 from sympy.core import Symbol, symbols, S, Rational, Integer, I, pi, oo
 from sympy.functions import exp, log, sin, cos, sign, re, im, sqrt
-from sympy.assumptions import (Assume, global_assumptions, Q, ask,
+from sympy.assumptions import (Assume, set_local_assumptions, get_local_assumptions, Q, ask,
     register_handler, remove_handler)
 from sympy.assumptions.handlers import AskHandler
 from sympy.utilities.pytest import raises, XFAIL
@@ -935,13 +935,15 @@ def test_algebraic():
 
     assert ask(2.47, 'algebraic') == False
 
-def test_global():
-    """Test ask with global assumptions"""
+def test_local():
+    """Test ask with local assumptions"""
     x = symbols('x')
+    set_local_assumptions()
+    a = get_local_assumptions()
     assert ask(x, Q.integer) == None
-    global_assumptions.add(Assume(x, Q.integer))
+    a.add(Assume(x, Q.integer))
     assert ask(x, Q.integer) == True
-    global_assumptions.clear()
+    a.clear()
     assert ask(x, Q.integer) == None
 
 def test_functions_in_assumptions():
