@@ -1,5 +1,6 @@
 # doctests are disabled because of issue #1521
 from sympy.core import Basic, Symbol
+import inspect
 
 class AssumptionsContext(set):
     """Set representing assumptions.
@@ -26,10 +27,41 @@ class AssumptionsContext(set):
     def add(self, *assumptions):
         """Add an assumption."""
         for a in assumptions:
-            assert isinstance(a, Assume), 'can only store instances of Assume'
+            assert type(a) is Assume, 'can only store instances of Assume'
             super(AssumptionsContext, self).add(a)
 
+# TODO: get rid of this
 global_assumptions = AssumptionsContext()
+
+LOCALCONTEXT = '__sympy_local_assumptions'
+
+def set_local_assumptions():
+    """Set a local assumption context and return it.
+
+    By default, this is done in the current local scope, this can be changed
+    using the `scope` argument.
+
+    This will overwrite any previous (local) assumptions."""
+    f = inspect.currentframe().f_back
+    c = AssumptionsContext()
+    f.f_locals[LOCALCONTEXT] = c
+    return c
+
+def get_local_assumptions():
+    """Return the current local assumption context.
+
+    This can be in an outer scope if `set_local_assumptions()` has not been yet
+    called in the current scope.
+
+    If there is no defined assumption context in any scope, None is returned.
+    """
+    f = inspect.currentframe()
+    while f.f_back is not None:
+        f = f.f_back
+        result = f.f_locals.get(LOCALCONTEXT)
+        if result is not None:
+            return result
+    return None
 
 class Assume(Basic):
     """New-style assumptions.
