@@ -3,7 +3,7 @@ import inspect
 import copy
 from sympy.core import sympify
 from sympy.utilities.source import get_class
-from sympy.assumptions import global_assumptions
+from sympy.assumptions import get_local_assumptions, AssumptionsContext
 from sympy.assumptions.assume import eliminate_assume
 from sympy.logic.boolalg import to_cnf, conjuncts, disjuncts, \
     And, Not
@@ -62,7 +62,10 @@ def ask(expr, key, assumptions=True):
 
     """
     expr = sympify(expr)
-    assumptions = And(assumptions, And(*global_assumptions))
+    local_assumptions = get_local_assumptions()
+    if local_assumptions is None:
+        local_assumptions = AssumptionsContext()
+    assumptions = And(assumptions, And(*local_assumptions))
 
     # direct resolution method, no logic
     resolutors = []
