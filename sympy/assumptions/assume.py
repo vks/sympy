@@ -12,17 +12,17 @@ class AssumptionsContext(set):
     wrapper to Python's set, so see its documentation for advanced usage.
 
     Examples:
-        >>> from sympy import global_assumptions, Assume, Q
-        >>> global_assumptions
+        >>> from sympy import AssumptionsContext, Assume, Q
+        >>> c = AssumptionsContext; c
         AssumptionsContext()
         >>> from sympy.abc import x
-        >>> global_assumptions.add(Assume(x, Q.real))
-        >>> global_assumptions
-        AssumptionsContext([Assume(x, Q.real)])
-        >>> global_assumptions.remove(Assume(x, Q.real))
-        >>> global_assumptions
+        >>> c.add(Assume(x, Q.real))
+        >>> c
+        AssumptionsContext([Assume(x, 'real', True)])
+        >>> c.remove(Assume(x, Q.real))
+        >>> c
         AssumptionsContext()
-        >>> global_assumptions.clear()
+        >>> c.clear()
 
     """
 
@@ -32,12 +32,6 @@ class AssumptionsContext(set):
             assert type(a) is Assume, 'can only store instances of Assume'
             super(AssumptionsContext, self).add(a)
 
-# TODO: get rid of this
-global_assumptions = AssumptionsContext()
-
-<<<<<<< HEAD
-class Assume(Boolean):
-=======
 LOCALCONTEXT = '__sympy_local_assumptions'
 
 def set_local_assumptions():
@@ -68,8 +62,7 @@ def get_local_assumptions():
             return result
     return None
 
-class Assume(Basic):
->>>>>>> implement local assumptions
+class Assume(Boolean):
     """New-style assumptions.
 
     >>> from sympy import Assume, Q
