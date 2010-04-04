@@ -1,6 +1,6 @@
 """This module is intended for solving recurrences or, in other words,
    difference equations. Currently supported are linear, inhomogeneous
-   equantions with polynomial or rational coefficients.
+   equations with polynomial or rational coefficients.
 
    The solutions are obtained among polynomials, rational functions,
    hypergeometric terms, or combinations of hypergeometric term which
@@ -30,7 +30,7 @@
 
    Then L = [-1, 1] and f(n) = m*n**(m-1) and finally for m=4:
 
-    >>> from sympy import Symbol, bernoulli
+    >>> from sympy import Symbol, bernoulli, rsolve_poly
     >>> n = Symbol('n', integer=True)
 
     >>> rsolve_poly([-1, 1], 4*n**3, n)
@@ -43,10 +43,10 @@
 
     [1] a polynomial              -> rsolve_poly
     [2] a rational function       -> rsolve_ratio
-    [3] a hypegeometric function  -> rsolve_hyper
+    [3] a hypergeometric function  -> rsolve_hyper
 """
 
-from sympy.core.basic import Basic, S
+from sympy.core.basic import S
 from sympy.core.numbers import Rational
 from sympy.core.symbol import Symbol, Wild
 from sympy.core.relational import Equality
@@ -54,9 +54,9 @@ from sympy.core.add import Add
 from sympy.core.mul import Mul
 from sympy.core import sympify
 
-from sympy.simplify import simplify, hypersimp, hypersimilar, collect
+from sympy.simplify import simplify, hypersimp, hypersimilar
 from sympy.solvers import solve, solve_undetermined_coeffs
-from sympy.polys import Poly, quo, gcd, lcm, roots, resultant
+from sympy.polys import Poly, exquo, gcd, lcm, roots, resultant
 from sympy.functions import Binomial, FallingFactorial
 from sympy.matrices import Matrix, casoratian
 from sympy.concrete import product
@@ -73,14 +73,14 @@ def rsolve_poly(coeffs, f, n, **hints):
            (2) Find all polynomials of degree N or less of Ly = f.
 
        There are two methods for computing the polynomial solutions.
-       If the degree bound is relatively small, ie. it's smaller than
+       If the degree bound is relatively small, i.e. it's smaller than
        or equal to the order of the recurrence, then naive method of
        undetermined coefficients is being used. This gives system
        of algebraic equations with N+1 unknowns.
 
        In the other case, the algorithm performs transformation of the
        initial equation to an equivalent one, for which the system of
-       algebraic equations has only 'r' undeterminates. This method is
+       algebraic equations has only 'r' indeterminates. This method is
        quite sophisticated (in comparison with the naive one) and was
        invented together by Abramov, Bronstein and Petkovsek.
 
@@ -91,7 +91,7 @@ def rsolve_poly(coeffs, f, n, **hints):
        up to a constant. For this we can use b(n+1) - b(n) == m*n**(m-1)
        recurrence, which has solution b(n) = B_m + C. For example:
 
-       >>> from sympy.core import Symbol
+       >>> from sympy import Symbol, rsolve_poly
        >>> n = Symbol('n', integer=True)
 
        >>> rsolve_poly([-1, 1], 4*n**3, n)
@@ -121,7 +121,7 @@ def rsolve_poly(coeffs, f, n, **hints):
 
     coeffs = [ Poly(coeff, n) for coeff in coeffs ]
 
-    polys = [ Poly((), n) ] * (r+1)
+    polys = [ Poly(0, n) ] * (r+1)
     terms = [ (S.Zero, S.NegativeInfinity) ] *(r+1)
 
     for i in xrange(0, r+1):
@@ -129,7 +129,7 @@ def rsolve_poly(coeffs, f, n, **hints):
             polys[i] += coeffs[j]*Binomial(j, i)
 
         if not polys[i].is_zero:
-            coeff, (exp,) = polys[i].LT
+            (exp,), coeff = polys[i].LT()
             terms[i] = (coeff, exp)
 
     d = b = terms[0][1]
@@ -151,7 +151,7 @@ def rsolve_poly(coeffs, f, n, **hints):
         if terms[i][1] - i == b:
             degree_poly += terms[i][0]*FallingFactorial(x, i)
 
-    nni_roots = roots(degree_poly, x, domain='Z',
+    nni_roots = roots(degree_poly, x, filter='Z',
         predicate=lambda r: r >= 0).keys()
 
     if nni_roots:
@@ -162,7 +162,7 @@ def rsolve_poly(coeffs, f, n, **hints):
     if homogeneous:
         N += [-b-1]
     else:
-        N += [f.as_poly(n).degree - b, -b-1]
+        N += [f.as_poly(n).degree() - b, -b-1]
 
     N = int(max(N))
 
@@ -197,7 +197,7 @@ def rsolve_poly(coeffs, f, n, **hints):
         A = r
         U = N+A+b+1
 
-        nni_roots = roots(polys[r], domain='Z',
+        nni_roots = roots(polys[r], filter='Z',
             predicate=lambda r: r >= 0).keys()
 
         if nni_roots != []:
@@ -342,9 +342,9 @@ def rsolve_ratio(coeffs, f, n, **hints):
        characteristic zero.
 
        This procedure accepts only polynomials, however if you are
-       interested in solving recurrence with ratinal coefficients
-       then use rsolve() with will preprocess equation given and
-       run this procedure with polynomial arguments.
+       interested in solving recurrence with rational coefficients
+       then use rsolve() which will pre-process the given equation
+       and run this procedure with polynomial arguments.
 
        The algorithm performs two basic steps:
 
@@ -362,7 +362,7 @@ def rsolve_ratio(coeffs, f, n, **hints):
 
        Besides finding rational solutions alone, this functions is
        an important part of Hyper algorithm were it is used to find
-       particular solution of ingomogeneous part of a recurrence.
+       particular solution of inhomogeneous part of a recurrence.
 
        For more information on the implemented algorithm refer to:
 
@@ -390,9 +390,9 @@ def rsolve_ratio(coeffs, f, n, **hints):
 
     if not res.is_polynomial(h):
         p, q = res.as_numer_denom()
-        res = quo(p, q, h)
+        res = exquo(p, q, h)
 
-    nni_roots = roots(res, h, domain='Z',
+    nni_roots = roots(res, h, filter='Z',
         predicate=lambda r: r >= 0).keys()
 
     if not nni_roots:
@@ -403,8 +403,8 @@ def rsolve_ratio(coeffs, f, n, **hints):
         for i in xrange(int(max(nni_roots)), -1, -1):
             d = gcd(A, B.subs(n, n+i), n)
 
-            A = quo(A, d, n)
-            B = quo(B, d.subs(n, n-i), n)
+            A = exquo(A, d, n)
+            B = exquo(B, d.subs(n, n-i), n)
 
             C *= Mul(*[ d.subs(n, n-j) for j in xrange(0, i+1) ])
 
@@ -413,8 +413,8 @@ def rsolve_ratio(coeffs, f, n, **hints):
         for i in range(0, r+1):
             g = gcd(coeffs[i], denoms[i], n)
 
-            numers[i] = quo(coeffs[i], g, n)
-            denoms[i] = quo(denoms[i], g, n)
+            numers[i] = exquo(coeffs[i], g, n)
+            denoms[i] = exquo(denoms[i], g, n)
 
         for i in xrange(0, r+1):
             numers[i] *= Mul(*(denoms[:i] + denoms[i+1:]))
@@ -444,12 +444,12 @@ def rsolve_hyper(coeffs, f, n, **hints):
                solution using Abramov's algorithm.
 
            (2) Compute generating set of L and find basis in it,
-               so that all solutions are lineary independent.
+               so that all solutions are linearly independent.
 
            (3) Form final solution with the number of arbitrary
                constants equal to dimension of basis of L.
 
-       Term a(n) is hypergeometric if it is anihilated by first order
+       Term a(n) is hypergeometric if it is annihilated by first order
        linear difference equations with polynomial coefficients or, in
        simpler words, if consecutive term ratio is a rational function.
 
@@ -459,7 +459,7 @@ def rsolve_hyper(coeffs, f, n, **hints):
 
        Note also that this method not only computes the kernel of the
        inhomogeneous equation, but also reduces in to a basis so that
-       solutions generated by this procedure are lineary independent
+       solutions generated by this procedure are linearly independent
 
        For more information on the implemented algorithm refer to:
 
@@ -557,16 +557,16 @@ def rsolve_hyper(coeffs, f, n, **hints):
             a = Mul(*[ A.subs(n, n+j) for j in xrange(0, i) ])
             b = Mul(*[ B.subs(n, n+j) for j in xrange(i, r) ])
 
-            poly = quo(coeffs[i]*a*b, D, n)
+            poly = exquo(coeffs[i]*a*b, D, n)
             polys.append(poly.as_poly(n))
 
             if not poly.is_zero:
-                degrees.append(polys[i].degree)
+                degrees.append(polys[i].degree())
 
         d, poly = max(degrees), S.Zero
 
         for i in xrange(0, r+1):
-            coeff = polys[i].coeff(d)
+            coeff = polys[i].nth(d)
 
             if coeff is not S.Zero:
                 poly += coeff * Z**i
@@ -621,18 +621,17 @@ def rsolve(f, y, init=None):
 
          (n - 1) y(n + 2) - (n**2 + 3 n - 2) y(n + 1) + 2 n (n + 1) y(n) == 0
 
-       >>> from sympy import *
-
+       >>> from sympy import Function, rsolve
+       >>> from sympy.abc import n
        >>> y = Function('y')
-       >>> n = Symbol('n', integer=True)
 
        >>> f = (n-1)*y(n+2) - (n**2+3*n-2)*y(n+1) + 2*n*(n+1)*y(n)
 
        >>> rsolve(f, y(n))
-       C0*n! + C1*2**n
+       C0*gamma(1 + n) + C1*2**n
 
        >>> rsolve(f, y(n), { y(0):0, y(1):3 })
-       -3*n! + 3*2**n
+       -3*gamma(1 + n) + 3*2**n
 
     """
     if isinstance(f, Equality):
@@ -700,9 +699,9 @@ def rsolve(f, y, init=None):
     if common is not S.One:
         for k, coeff in h_part.iteritems():
             numer, denom = coeff.as_numer_denom()
-            h_part[k] = numer*quo(common, denom, n)
+            h_part[k] = numer*exquo(common, denom, n)
 
-        i_part = i_numer*quo(common, i_denom, n)
+        i_part = i_numer*exquo(common, i_denom, n)
 
     K_min = min(h_part.keys())
 
@@ -763,4 +762,3 @@ def rsolve(f, y, init=None):
                     solution = solution.subs(k, v)
 
     return (solution.expand()) / common
-

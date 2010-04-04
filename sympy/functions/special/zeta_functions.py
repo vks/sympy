@@ -1,6 +1,4 @@
-
-from sympy.core import Function, S, C, Basic, sympify, pi
-from sympy.utilities.decorator import deprecated
+from sympy.core import Function, S, C, sympify, pi
 
 ###############################################################################
 ###################### HURWITZ GENERALIZED ZETA FUNCTION ######################
@@ -9,11 +7,6 @@ from sympy.utilities.decorator import deprecated
 class zeta(Function):
 
     nargs = (1, 2)
-
-    @classmethod
-    @deprecated
-    def canonize(cls, z, a=S.One):
-        return cls.eval(z, a)
 
     @classmethod
     def eval(cls, z, a=S.One):
@@ -58,11 +51,6 @@ class dirichlet_eta(Function):
     Dirichlet eta function
     """
     nargs = 1
-
-    @classmethod
-    @deprecated
-    def canonize(cls, s):
-        return cls.eval(s)
 
     @classmethod
     def eval(cls, s):

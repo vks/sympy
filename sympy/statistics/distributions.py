@@ -55,6 +55,8 @@ class Normal(ContinuousProbability):
 
     Example usage:
 
+        >>> from sympy.statistics import Normal
+        >>> from sympy import oo
         >>> N = Normal(1, 2)
         >>> N.mean
         1
@@ -102,6 +104,7 @@ class Normal(ContinuousProbability):
 
         Examples usage:
             # One standard deviation
+            >>> from sympy.statistics import Normal
             >>> N = Normal(0, 1)
             >>> N.confidence(0.68)
             (-0.994457883209753, 0.994457883209753)
@@ -187,6 +190,8 @@ class Uniform(ContinuousProbability):
     def confidence(s, p):
         """Generate a symmetric (p*100)% confidence interval.
 
+        >>> from sympy import Rational
+        >>> from sympy.statistics import Uniform
         >>> U = Uniform(1, 2)
         >>> U.confidence(1)
         (1, 2)
@@ -220,8 +225,9 @@ class PDF(ContinuousProbability):
 
     Example usage:
 
-        >>> from sympy import Symbol
-        >>> x = Symbol('x')
+        >>> from sympy import Symbol, exp, oo
+        >>> from sympy.statistics.distributions import PDF
+        >>> from sympy.abc import x
         >>> a = Symbol('a', positive=True)
 
         >>> exponential = PDF(exp(-x/a)/a, (x,0,oo))
@@ -257,8 +263,9 @@ class PDF(ContinuousProbability):
 
         Example usage:
 
-            >>> from sympy import Symbol
-            >>> x = Symbol('x')
+            >>> from sympy import Symbol, exp, oo
+            >>> from sympy.statistics.distributions import PDF
+            >>> from sympy.abc import x
             >>> a = Symbol('a', positive=True)
 
             >>> exponential = PDF(exp(-x/a), (x,0,oo))
@@ -306,10 +313,10 @@ class PDF(ContinuousProbability):
         if self._variance is not None:
             return self._variance
         else:
-            from sympy import integrate, trim, together
+            from sympy import integrate, simplify, together
             w = Symbol('w', real=True, dummy=True)
             self._variance = integrate(self.pdf(w)*w**2,(w,self.domain[0],self.domain[1])) - self.mean**2
-            self._variance = trim(self._variance)
+            self._variance = simplify(self._variance)
             return self._variance
 
     def _get_stddev(self):
@@ -345,3 +352,4 @@ class PDF(ContinuousProbability):
             newPdf += (self.pdf(var)/abs(funcdiff)).subs(var,x)
 
         return PDF(newPdf, (w, func.subs(var, self.domain[0]), func.subs(var, self.domain[1])))
+

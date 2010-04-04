@@ -1,5 +1,4 @@
-
-from sympy.core import Basic, S, C, Add, Mul, Symbol, sympify
+from sympy.core import Basic, S, C, Mul, sympify
 
 from sympy.polys import quo, roots
 from sympy.simplify import powsimp
@@ -81,6 +80,7 @@ class Product(Basic):
             return self
 
     def _eval_product(self, a, n, term):
+        from sympy import sum, Sum
         k = self.index
 
         if not term.has(k):
@@ -89,7 +89,7 @@ class Product(Basic):
             poly = term.as_poly(k)
 
             A = B = Q = S.One
-            C_= poly.LC
+            C_= poly.LC()
 
             all_roots = roots(poly, multiple=True)
 
@@ -97,10 +97,10 @@ class Product(Basic):
                 A *= C.RisingFactorial(a-r, n-a+1)
                 Q *= n - r
 
-            if len(all_roots) < poly.degree:
+            if len(all_roots) < poly.degree():
                 B = Product(quo(poly, Q.as_poly(k)), (k, a, n))
 
-            return poly.LC**(n-a+1) * A * B
+            return poly.LC()**(n-a+1) * A * B
         elif term.is_Add:
             p, q = term.as_numer_denom()
 
@@ -117,7 +117,7 @@ class Product(Basic):
                 if p is not None:
                     exclude.append(p)
                 else:
-                    include.append(p)
+                    include.append(t)
 
             if not exclude:
                 return None
@@ -143,3 +143,4 @@ def product(*args, **kwargs):
         return prod.doit(deep=False)
     else:
         return prod
+

@@ -1,5 +1,5 @@
 from sympy import Sieve, binomial_coefficients, binomial_coefficients_list, \
-        multinomial_coefficients, raises
+        multinomial_coefficients, raises, Mul, S, Pow
 from sympy.ntheory import isprime, n_order, is_primitive_root, \
     is_quad_residue, legendre_symbol, npartitions, totient, \
     factorint, primefactors, divisors, randprime, nextprime, prevprime, \
@@ -72,6 +72,15 @@ def test_isprime():
     assert isprime(2**89 - 1)
     assert isprime(2**607 - 1)
     assert not isprime(2**601 - 1)
+    #Arnault's number
+    assert isprime(int('''
+803837457453639491257079614341942108138837688287558145837488917522297\
+427376533365218650233616396004545791504202360320876656996676098728404\
+396540823292873879185086916685732826776177102938969773947016708230428\
+687109997439976544144845341155872450633409279022275296229414984230688\
+1685404326457534018329786111298960644845216191652872597534901'''))
+    # pseudoprime that passes the base set [2, 3, 7, 61, 24251]
+    assert not isprime(9188353522314541)
 
 def test_prime():
     assert prime(1) == 2
@@ -215,6 +224,14 @@ def test_factorint():
     assert factorint(3,2) == {3: 1}
     assert factorint(12345) == {3: 1, 5: 1, 823: 1}
     assert factorint(12345, 3) == {12345: 1} # there are no factors less than 3
+
+def test_visual_factorint():
+    assert type(factorint(42, visual=True)) == Mul
+    assert str(factorint(42, visual=True)) == '2**1*3**1*7**1'
+    assert factorint(1, visual=True) is S.One
+    assert factorint(42**2, visual=True) == Mul(Pow(2, 2, evaluate=False),
+    Pow(3, 2, evaluate=False), Pow(7, 2, evaluate=False), evaluate=False)
+    assert Pow(-1, 1, evaluate=False) in factorint(-42, visual=True).args
 
 def test_totient():
     assert [totient(k) for k in range(1, 12)] == \

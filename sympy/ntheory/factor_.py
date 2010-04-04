@@ -3,12 +3,14 @@ Integer factorization
 """
 
 from sympy.core.numbers import igcd
-from sympy.core.power import integer_nthroot
+from sympy.core.power import integer_nthroot, Pow
+from sympy.core.mul import Mul
 import random
 import math
 from primetest import isprime
-from generate import sieve, prime, primerange
+from generate import sieve, primerange
 from sympy.utilities.iterables import iff
+from sympy.core.sympify import S
 
 small_trailing = [i and max(int(not i % 2**j) and j for j in range(1,8)) \
     for i in range(256)]
@@ -38,6 +40,7 @@ def multiplicity(p, n):
 
     Example usage
     =============
+        >>> from sympy.ntheory import multiplicity
         >>> [multiplicity(5, n) for n in [8, 5, 25, 125, 250]]
         [0, 1, 2, 3, 3]
 
@@ -106,7 +109,7 @@ def pollard_rho(n, retries=5, max_steps=None, seed=1234):
 
     The algorithm may need to take thousands of steps before
     it finds a factor or reports failure. If ``max_steps`` is
-    specified, the iteration is cancelled with a failure after
+    specified, the iteration is canceled with a failure after
     the specified number of steps.
 
     On failure, the algorithm will self-restart (with different
@@ -151,7 +154,7 @@ def pollard_pm1(n, B=10, seed=1234):
     factor is found, ``None`` is returned.
 
     The search is performed up to a smoothness bound ``B``.
-    Choosing a larger B increases the likelyhood of finding
+    Choosing a larger B increases the likelihood of finding
     a large factor.
 
     The p-1 algorithm is a Monte Carlo method whose outcome can
@@ -161,6 +164,7 @@ def pollard_pm1(n, B=10, seed=1234):
     =============
     With the default smoothness bound, this number can't be cracked:
 
+        >>> from sympy.ntheory import pollard_pm1
         >>> pollard_pm1(21477639576571)
 
     Increasing the smoothness bound helps:
@@ -242,12 +246,13 @@ rho_msg = "Pollard's rho with retries %i, max_steps %i and seed %i"
 pm1_msg = "Pollard's p-1 with smoothness bound %i and seed %i"
 
 def factorint(n, limit=None, use_trial=True, use_rho=True, use_pm1=True,
-    verbose=False):
+    verbose=False, visual=False):
     """
     Given a positive integer ``n``, ``factorint(n)`` returns a dict containing
     the prime factors of ``n`` as keys and their respective multiplicities
     as values. For example:
 
+        >>> from sympy.ntheory import factorint
         >>> factorint(2000)    # 2000 = (2**4) * (5**3)
         {2: 4, 5: 3}
         >>> factorint(65537)   # This number is prime
@@ -287,7 +292,7 @@ def factorint(n, limit=None, use_trial=True, use_rho=True, use_pm1=True,
     ``factorint`` also periodically checks if the remaining part is
     a prime number or a perfect power, and in those cases stops.
 
-    Partial factorization
+    Partial Factorization
     =====================
 
     If ``limit`` is specified, the search is stopped after performing
@@ -299,8 +304,9 @@ def factorint(n, limit=None, use_trial=True, use_rho=True, use_pm1=True,
     returned may be composite.
 
     This number, for example, has two small factors and a huge
-    semiprime factor that cannot be reduced easily:
+    semi-prime factor that cannot be reduced easily:
 
+        >>> from sympy.ntheory import isprime
         >>> a = 1407633717262338957430697921446883
         >>> f = factorint(a, limit=10000)
         >>> f == {991: 1, 202916782076162456022877024859L: 1, 7: 1}
@@ -308,11 +314,53 @@ def factorint(n, limit=None, use_trial=True, use_rho=True, use_pm1=True,
         >>> isprime(max(f))
         False
 
-    Miscellaneous options
+    Visual Factorization
+    ====================
+    If ``visual`` is set to ``True``, then it will return a visual
+    factorization of the integer.  For example:
+
+        >>> from sympy import pprint
+        >>> pprint(factorint(4200, visual=True))
+         3  1  2  1
+        2 *3 *5 *7
+
+    Note that this is achieved by using the evaluate=False flag in Mul
+    and Pow. If you do other manipulations with an expression where
+    evaluate=False, it may evaluate.  Therefore, you should use the
+    visual option only for visualization, and use the normal dictionary
+    returned by visual=False if you want to perform operations on the
+    factors.
+
+    If you find that you want one from the other but you do not want to
+    run expensive factorint again, you can easily switch between the two
+    forms using the following list comprehensions:
+
+        >>> from sympy import Mul, Pow
+        >>> regular = factorint(1764); regular
+        {2: 2, 3: 2, 7: 2}
+        >>> pprint(Mul(*[Pow(*i, **{'evaluate':False}) for i in regular.items()],
+        ... **{'evaluate':False}))
+         2  2  2
+        2 *3 *7
+
+        >>> visual = factorint(1764, visual=True); pprint(visual)
+         2  2  2
+        2 *3 *7
+        >>> dict([i.args for i in visual.args])
+        {2: 2, 3: 2, 7: 2}
+
+    Miscellaneous Options
     =====================
 
     If ``verbose`` is set to ``True``, detailed progress is printed.
     """
+    if visual:
+        factordict = factorint(n, limit=limit, use_trial=use_trial, use_rho=use_rho,
+        use_pm1=use_pm1, verbose=verbose, visual=False)
+        if factordict == {}:
+            return S.One
+        return Mul(*[Pow(*i, **{'evaluate':False}) for i in factordict.items()],
+            **{'evaluate':False})
     assert use_trial or use_rho or use_pm1
     n = int(n)
     if not n:
@@ -407,6 +455,7 @@ def primefactors(n, limit=None, verbose=False):
     Example usage
     =============
 
+        >>> from sympy.ntheory import primefactors, factorint, isprime
         >>> primefactors(6)
         [2, 3]
         >>> primefactors(-5)
@@ -442,6 +491,7 @@ def divisors(n):
     """
     Return a list of all positive integer divisors of n.
 
+    >>> from sympy.ntheory import divisors
     >>> divisors(24)
     [1, 2, 3, 4, 6, 8, 12, 24]
 
@@ -459,6 +509,7 @@ def divisors(n):
 def totient(n):
     """Calculate the Euler totient function phi(n)
 
+    >>> from sympy.ntheory import totient
     >>> totient(1)
     1
     >>> totient(25)

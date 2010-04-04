@@ -2,7 +2,7 @@
 
 from sympy import symbols, Symbol, sin, cos, Matrix, Integral, pi, sqrt,\
         Function, Rational, tan, oo, Limit, ceiling, floor, conjugate, exp, I
-from sympy.printing.pretty import pretty
+from sympy.printing.pretty import pretty, pprint
 
 x,y,k = symbols('xyk')
 th  = Symbol('theta')
@@ -15,6 +15,7 @@ def test_upretty_greek():
     assert upretty( oo ) == u'∞'
     assert upretty( Symbol('alpha^+_1') )   ==  u'α⁺₁'
     assert upretty( Symbol('beta') )    == u'β'
+    assert upretty(Symbol('lambda')) == u'λ'
 
 def test_upretty_multiindex():
     assert upretty( Symbol('beta12') )  == u'β₁₂'
@@ -406,3 +407,13 @@ u"""\
 """
     assert u == s
 
+def test_upprint():
+    import StringIO, sys
+    fd = StringIO.StringIO()
+    sso = sys.stdout
+    sys.stdout = fd
+    try:
+        pprint(pi, use_unicode=True)
+    finally:
+        sys.stdout = sso
+    assert fd.getvalue() == u'\u03c0\n'

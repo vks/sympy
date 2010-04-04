@@ -1,6 +1,7 @@
 """Boolean algebra module for SymPy"""
 from sympy.core import Basic, Function, sympify, Symbol
-from sympy.utilities import flatten
+from sympy.utilities import make_list
+from sympy.core.operations import LatticeOp
 
 
 class BooleanFunction(Function):
@@ -9,48 +10,32 @@ class BooleanFunction(Function):
     """
     pass
 
-class And(BooleanFunction):
-    """Logical AND function.
+class And(LatticeOp, BooleanFunction):
+    """
+    Logical AND function.
+
     It evaluates its arguments in order, giving False immediately if any of them
     are False, and True if they are all True.
 
     Examples:
-        >>> from sympy import *
-        >>> x, y = symbols('xy')
+        >>> from sympy.core import symbols
+        >>> from sympy.abc import x, y
         >>> x & y
         And(x, y)
 
     """
-    @classmethod
-    def eval(cls, *args):
-        out_args = []
-        for arg in args: # we iterate over a copy or args
-            if isinstance(arg, bool):
-                if not arg: return False
-                else: continue
-            out_args.append(arg)
-        if len(out_args) == 0: return True
-        if len(out_args) == 1: return out_args[0]
-        sargs = sorted(flatten(out_args, cls=cls))
-        return Basic.__new__(cls, *sargs)
+    zero = False
+    identity = True
 
-class Or(BooleanFunction):
-    """Logical OR function
-     It evaluates its arguments in order, giving True immediately if any of them are
-     True, and False if they are all False.
-     """
-    @classmethod
-    def eval(cls, *args):
-        out_args = []
-        for arg in args: # we iterate over a copy or args
-            if isinstance(arg, bool):
-                if arg: return True
-                else: continue
-            out_args.append(arg)
-        if len(out_args) == 0: return False
-        if len(out_args) == 1: return out_args[0]
-        sargs = sorted(flatten(out_args, cls=cls))
-        return Basic.__new__(cls, *sargs)
+class Or(LatticeOp, BooleanFunction):
+    """
+    Logical OR function
+
+    It evaluates its arguments in order, giving True immediately if any of them are
+    True, and False if they are all False.
+    """
+    zero = True
+    identity = False
 
 class Xor(BooleanFunction):
     """Logical XOR (exclusive OR) function.
@@ -76,13 +61,14 @@ class Not(BooleanFunction):
         if len(args) > 1:
             return map(cls, args)
         arg = args[0]
+        if type(arg) is bool:
+            return not arg
         # apply De Morgan Rules
-        if type(arg) is  And:
+        if arg.func is And:
             return Or(*[Not(a) for a in arg.args])
-        if type(arg) is Or:
+        if arg.func is Or:
             return And(*[Not(a) for a in arg.args])
-        if type(arg) is bool: return not arg
-        if type(arg) is Not:
+        if arg.func is Not:
             return arg.args[0]
 
 class Nand(BooleanFunction):
@@ -92,7 +78,8 @@ class Nand(BooleanFunction):
     """
     @classmethod
     def eval(cls, *args):
-        if not args: return False
+        if not args:
+            return False
         args = list(args)
         A = Not(args.pop())
         while args:
@@ -107,7 +94,8 @@ class Nor(BooleanFunction):
     """
     @classmethod
     def eval(cls, *args):
-        if not args: return False
+        if not args:
+            return False
         args = list(args)
         A = Not(args.pop())
         while args:
@@ -116,7 +104,15 @@ class Nor(BooleanFunction):
         return A
 
 class Implies(BooleanFunction):
-    pass
+    """Logical implication.
+    A implies B is equivalent to !A v B
+    """
+    @classmethod
+    def eval(cls, *args):
+        if len(args) != 2:
+            raise ValueError, "%d operand(s) used for an Implies (pairs are required): %s" % (len(args), str(args))
+        else:
+            return Or(Not(args[0]), args[1])
 
 class Equivalent(BooleanFunction):
     """Equivalence relation.
@@ -135,7 +131,7 @@ def fuzzy_not(arg):
     will return Not if arg is a boolean value, and None if argument
     is None
 
-    >>> from sympy import *
+    >>> from sympy.logic.boolalg import fuzzy_not
     >>> fuzzy_not(True)
     False
     >>> fuzzy_not(None)
@@ -143,55 +139,50 @@ def fuzzy_not(arg):
     True
 
     """
-    if arg is None: return
+    if arg is None:
+        return
     return not arg
 
 def conjuncts(expr):
     """Return a list of the conjuncts in the expr s.
-    >>> from sympy import symbols
-    >>> A, B = symbols('AB')
+    >>> from sympy.logic.boolalg import conjuncts
+    >>> from sympy.abc import A, B
     >>> conjuncts(A & B)
     [A, B]
     >>> conjuncts(A | B)
     [Or(A, B)]
 
     """
-    if expr:
-        if type(expr) is And:
-            return list(expr.args)
-        return [expr]
-    return []
+    return make_list(expr, And)
 
 def disjuncts(expr):
     """Return a list of the disjuncts in the sentence s.
-    >>> from sympy import symbols
-    >>> A, B = symbols('AB')
+    >>> from sympy.logic.boolalg import disjuncts
+    >>> from sympy.abc import A, B
     >>> disjuncts(A | B)
     [A, B]
     >>> disjuncts(A & B)
     [And(A, B)]
 
     """
-    if isinstance(expr, Or):
-        return list(expr.args)
-    else:
-        return [expr]
+    return make_list(expr, Or)
 
 def distribute_and_over_or(expr):
     """
     Given a sentence s consisting of conjunctions and disjunctions
     of literals, return an equivalent sentence in CNF.
     """
-    if isinstance(expr, Or):
+    if expr.func is Or:
         for arg in expr.args:
-            if isinstance(arg, And):
+            if arg.func is And:
                 conj = arg
                 break
-        else: return type(expr)(*expr.args)
+        else:
+            return expr
         rest = Or(*[a for a in expr.args if a is not conj])
         return And(*map(distribute_and_over_or,
                    [Or(c, rest) for c in conj.args]))
-    elif isinstance(expr, And):
+    elif expr.func is And:
         return And(*map(distribute_and_over_or, expr.args))
     else:
         return expr
@@ -202,10 +193,10 @@ def to_cnf(expr):
 
     Examples:
 
-        >>> from sympy import symbols
-        >>> A, B, C = symbols('A B C')
-        >>> to_cnf(~(A | B) | C)
-        And(Or(C, Not(A)), Or(C, Not(B)))
+        >>> from sympy.logic.boolalg import to_cnf
+        >>> from sympy.abc import A, B, D
+        >>> to_cnf(~(A | B) | D)
+        And(Or(D, Not(A)), Or(D, Not(B)))
 
     """
     expr = sympify(expr)
@@ -218,12 +209,13 @@ def eliminate_implications(expr):
     operators.
     """
     expr = sympify(expr)
-    if expr.is_Atom: return expr     ## (Atoms are unchanged.)
+    if expr.is_Atom:
+        return expr     ## (Atoms are unchanged.)
     args = map(eliminate_implications, expr.args)
     a, b = args[0], args[-1]
-    if isinstance(expr, Implies):
+    if expr.func is Implies:
         return (~a) | b
-    elif isinstance(expr, Equivalent):
+    elif expr.func is Equivalent:
         return (a | Not(b)) & (b | Not(a))
     else:
         return type(expr)(*args)
@@ -244,23 +236,17 @@ def to_int_repr(clauses, symbols):
     takes clauses in CNF puts them into integer representation
 
     Examples:
-        >>> from sympy import symbols
-        >>> x, y = symbols('x y')
-        >>> to_int_repr([x | y, y], [x, y])
-        [[1, 2], [2]]
+        >>> from sympy.logic.boolalg import to_int_repr
+        >>> from sympy.abc import x, y
+        >>> to_int_repr([x | y, y], [x, y]) == [set([1, 2]), set([2])]
+        True
 
     """
     def append_symbol(arg, symbols):
-        if type(arg) is Not: return -(symbols.index(arg.args[0])+1)
-        else: return symbols.index(arg)+1
-
-    output = []
-    for c in clauses:
-        if type(c) is Or:
-            t = []
-            for arg in c.args:
-                t.append(append_symbol(arg, symbols))
-            output.append(t)
+        if arg.func is Not:
+            return -(symbols.index(arg.args[0])+1)
         else:
-            output.append([append_symbol(c, symbols)])
-    return output
+            return symbols.index(arg)+1
+
+    return [set(append_symbol(arg, symbols) for arg in make_list(c, Or)) \
+                                                            for c in clauses]

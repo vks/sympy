@@ -1,4 +1,4 @@
-from sympy import Symbol, Basic, Integer, sympify
+from sympy import Symbol, Integer, sympify
 
 class PlotInterval(object):
     """
@@ -162,4 +162,3 @@ class PlotInterval(object):
     def frange(self):
         for i in self.vrange():
             yield float(i.evalf())
-

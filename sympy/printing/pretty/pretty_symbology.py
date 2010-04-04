@@ -1,4 +1,4 @@
-"""Symbolic primitives + unicode/ascii abstraction  for pretty.py"""
+"""Symbolic primitives + unicode/ASCII abstraction  for pretty.py"""
 
 import sys
 warnings = ''
@@ -47,7 +47,6 @@ except ImportError:
     U = lambda name: None
 
 from sympy.printing.conventions import split_super_sub
-import re
 
 
 # prefix conventions when constructing tables
@@ -134,7 +133,6 @@ def fixup_tables():
 g   = lambda l: U('GREEK SMALL LETTER %s' % l.upper())
 G   = lambda l: U('GREEK CAPITAL LETTER %s' % l.upper())
 
-# XXX lambda <-> lamda
 greek_letters = [
     'alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta',
     'iota', 'kappa', 'lamda', 'mu', 'nu', 'xi', 'omicron', 'pi', 'rho',
@@ -142,7 +140,8 @@ greek_letters = [
 
 # {}  greek letter -> (g,G)
 greek = dict([(l, (g(l), G(l))) for l in greek_letters])
-
+# aliases
+greek['lambda'] = greek['lamda']
 
 digit_2txt = {
     '0' :   'ZERO',

@@ -14,7 +14,7 @@
 import sys
 
 # If your extensions are in another directory, add it here.
-#sys.path.append('some/directory')
+sys.path.append('../sympy')
 
 # General configuration
 # ---------------------
@@ -34,15 +34,15 @@ master_doc = 'index'
 
 # General substitutions.
 project = 'SymPy'
-copyright = '2008, 2009 SymPy Development Team'
+copyright = '2008, 2009, 2010 SymPy Development Team'
 
 # The default replacements for |version| and |release|, also used in various
 # other places throughout the built documents.
 #
 # The short X.Y version.
-version = '0.6.5'
+version = '0.6.7'
 # The full version, including alpha/beta/rc tags.
-release = '0.6.5'
+release = '0.6.7'
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:

@@ -2,8 +2,8 @@ import warnings
 from sympy import Basic, Symbol, Integer
 from sympy.core import sympify
 
-from sympy.core.basic import S, C
-from sympy.polys import Poly, roots
+from sympy.core.basic import S
+from sympy.polys import Poly, roots, cancel
 from sympy.simplify import simplify
 from sympy.utilities import any
 
@@ -21,12 +21,12 @@ class ShapeError(ValueError):
 class MatrixError(Exception):
     pass
 
-def _dims_to_nm( dims ):
+def _dims_to_nm(dims):
     """Converts dimensions tuple (or any object with length 1 or 2) or scalar
     in dims to matrix dimensions n and m."""
 
     try:
-        l = len( dims )
+        l = len(dims)
     except TypeError:
         dims = (dims,)
         l = 1
@@ -34,14 +34,14 @@ def _dims_to_nm( dims ):
     # This will work for nd-array too when they are added to sympy.
     try:
         for dim in dims:
-            assert (dim > 0) and isinstance( dim, int )
+            assert (dim > 0)
     except AssertionError:
-        raise ValueError("Matrix dimensions should positive integers!")
+        raise ValueError("Matrix dimensions should be positive integers!")
 
     if l == 2:
-        n, m = dims
+        n, m = map(int, dims)
     elif l == 1:
-        n, m = dims[0], dims[0]
+        n = m = int(dims[0])
     else:
         raise ValueError("Matrix dimensions should be a two-element tuple of ints or a single int!")
 
@@ -71,7 +71,7 @@ class Matrix(object):
         """
         Matrix can be constructed with values or a rule.
 
-        >>> from sympy import *
+        >>> from sympy import Matrix, I
         >>> Matrix( ((1,2+I), (3,4)) ) #doctest:+NORMALIZE_WHITESPACE
         [1, 2 + I]
         [3,     4]
@@ -82,15 +82,13 @@ class Matrix(object):
         """
         if len(args) == 3 and callable(args[2]):
             operation = args[2]
-            assert isinstance(args[0], int) and isinstance(args[1], int)
-            self.rows = args[0]
-            self.cols = args[1]
+            self.rows = int(args[0])
+            self.cols = int(args[1])
             self.mat = []
             for i in range(self.rows):
                 for j in range(self.cols):
                     self.mat.append(sympify(operation(i, j)))
-        elif len(args)==3 and isinstance(args[0],int) and \
-                isinstance(args[1],int) and isinstance(args[2], (list, tuple)):
+        elif len(args)==3 and isinstance(args[2], (list, tuple)):
             self.rows=args[0]
             self.cols=args[1]
             mat = args[2]
@@ -172,7 +170,7 @@ class Matrix(object):
         """
         Matrix transposition.
 
-        >>> from sympy import *
+        >>> from sympy import Matrix, I
         >>> m=Matrix(((1,2+I),(3,4)))
         >>> m  #doctest: +NORMALIZE_WHITESPACE
         [1, 2 + I]
@@ -204,7 +202,7 @@ class Matrix(object):
         """
         Hermite conjugation.
 
-        >>> from sympy import *
+        >>> from sympy import Matrix, I
         >>> m=Matrix(((1,2+I),(3,4)))
         >>> m  #doctest: +NORMALIZE_WHITESPACE
         [1, 2 + I]
@@ -226,7 +224,7 @@ class Matrix(object):
 
     def __getitem__(self,key):
         """
-        >>> from sympy import *
+        >>> from sympy import Matrix, I
         >>> m=Matrix(((1,2+I),(3,4)))
         >>> m  #doctest: +NORMALIZE_WHITESPACE
         [1, 2 + I]
@@ -280,7 +278,7 @@ class Matrix(object):
 
     def __setitem__(self, key, value):
         """
-        >>> from sympy import *
+        >>> from sympy import Matrix, I
         >>> m=Matrix(((1,2+I),(3,4)))
         >>> m  #doctest: +NORMALIZE_WHITESPACE
         [1, 2 + I]
@@ -344,7 +342,7 @@ class Matrix(object):
         """
         Return the Matrix converted in a python list.
 
-        >>> from sympy import *
+        >>> from sympy import Matrix
         >>> m=Matrix(3, 3, range(9))
         >>> m
         [0, 1, 2]
@@ -381,7 +379,7 @@ class Matrix(object):
         return (self.rows, self.cols)
 
     def __rmul__(self,a):
-        if hasattr(a, "__array__"):
+        if hasattr(a, "__array__") and a.shape != ():
             return matrix_multiply(a,self)
         out = Matrix(self.rows,self.cols,map(lambda i: a*i,self.mat))
         return out
@@ -402,7 +400,7 @@ class Matrix(object):
         return self + (-a)
 
     def __mul__(self,a):
-        if hasattr(a, "__array__"):
+        if hasattr(a, "__array__") and a.shape != ():
             return matrix_multiply(self,a)
         out = Matrix(self.rows,self.cols,map(lambda i: i*a,self.mat))
         return out
@@ -422,7 +420,7 @@ class Matrix(object):
                 self = self * self
                 n = n // 2
             return a
-        raise NotImplementedError('Can only rise to the power of an integer for now')
+        raise NotImplementedError('Can only raise to the power of an integer for now')
 
     def __add__(self,a):
         return matrix_add(self,a)
@@ -576,7 +574,7 @@ class Matrix(object):
         """
         Concatenates two matrices along self's last and rhs's first column
 
-        >>> from sympy import *
+        >>> from sympy import Matrix
         >>> M = Matrix(3,3,lambda i,j: i+j)
         >>> V = Matrix(3,1,lambda i,j: 3+i+j)
         >>> M.row_join(V)
@@ -595,7 +593,7 @@ class Matrix(object):
         """
         Concatenates two matrices along self's last and bott's first row
 
-        >>> from sympy import *
+        >>> from sympy import Matrix
         >>> M = Matrix(3,3,lambda i,j: i+j)
         >>> V = Matrix(1,3,lambda i,j: 3+i+j)
         >>> M.col_join(V)
@@ -613,7 +611,7 @@ class Matrix(object):
 
     def row_insert(self, pos, mti):
         """
-        >>> from sympy import *
+        >>> from sympy import Matrix, zeros
         >>> M = Matrix(3,3,lambda i,j: i+j)
         >>> M
         [0, 1, 2]
@@ -640,7 +638,7 @@ class Matrix(object):
 
     def col_insert(self, pos, mti):
         """
-        >>> from sympy import *
+        >>> from sympy import Matrix, zeros
         >>> M = Matrix(3,3,lambda i,j: i+j)
         >>> M
         [0, 1, 2]
@@ -675,7 +673,7 @@ class Matrix(object):
 
     def submatrix(self, keys):
         """
-        >>> from sympy import *
+        >>> from sympy import Matrix
         >>> m = Matrix(4,4,lambda i,j: i+j)
         >>> m   #doctest: +NORMALIZE_WHITESPACE
         [0, 1, 2, 3]
@@ -731,7 +729,7 @@ class Matrix(object):
 
     def applyfunc(self, f):
         """
-        >>> from sympy import *
+        >>> from sympy import Matrix
         >>> m = Matrix(2,2,lambda i,j: i*2+j)
         >>> m   #doctest: +NORMALIZE_WHITESPACE
         [0, 1]
@@ -753,7 +751,7 @@ class Matrix(object):
 
     def reshape(self, _rows, _cols):
         """
-        >>> from sympy import *
+        >>> from sympy import Matrix
         >>> m = Matrix(2,3,lambda i,j: 1)
         >>> m   #doctest: +NORMALIZE_WHITESPACE
         [1, 1, 1]
@@ -773,7 +771,7 @@ class Matrix(object):
     def print_nonzero (self, symb="X"):
         """
         Shows location of non-zero entries for fast shape lookup
-        >>> from sympy import *
+        >>> from sympy import Matrix, matrices
         >>> m = Matrix(2,3,lambda i,j: i*3+j)
         >>> m           #doctest: +NORMALIZE_WHITESPACE
         [0, 1, 2]
@@ -802,8 +800,11 @@ class Matrix(object):
 
     def LUsolve(self, rhs, iszerofunc=_iszero):
         """
-        Solve the linear system Ax = b.
+        Solve the linear system Ax = b for x.
         self is the coefficient matrix A and rhs is the right side b.
+
+        This is for symbolic matrices, for real or complex ones use
+        sympy.mpmath.lu_solve or sympy.mpmath.qr_solve.
         """
         assert rhs.rows == self.rows
         A, perm = self.LUdecomposition_Simple(iszerofunc=_iszero)
@@ -822,7 +823,7 @@ class Matrix(object):
 
     def LUdecomposition(self, iszerofunc=_iszero):
         """
-        Returns the decompositon LU and the row swaps p.
+        Returns the decomposition LU and the row swaps p.
         """
         combined, p = self.LUdecomposition_Simple(iszerofunc=_iszero)
         L = self.zeros(self.rows)
@@ -839,7 +840,7 @@ class Matrix(object):
 
     def LUdecomposition_Simple(self, iszerofunc=_iszero):
         """
-        Returns A compused of L,U (L's diag entries are 1) and
+        Returns A comprised of L,U (L's diag entries are 1) and
         p which is the list of the row swaps (in order).
         """
         assert self.rows == self.cols
@@ -937,23 +938,24 @@ class Matrix(object):
         """
         Calculates the Jacobian matrix (derivative of a vectorial function).
 
-        self ... a vector of expressions representing functions f_i(x_1, ...,
-                        x_n).
-        X ...... is the set of x_i's in order, it can be a list or a Matrix
+        *self*
+            A vector of expressions representing functions f_i(x_1, ..., x_n).
+        *X*
+            The set of x_i's in order, it can be a list or a Matrix
 
         Both self and X can be a row or a column matrix in any order
         (jacobian() should always work).
 
         Examples::
-        >>> from sympy import symbols, sin, cos
-        >>> rho, phi = symbols("rho phi")
+
+        >>> from sympy import sin, cos, Matrix
+        >>> from sympy.abc import rho, phi
         >>> X = Matrix([rho*cos(phi), rho*sin(phi), rho**2])
         >>> Y = Matrix([rho, phi])
         >>> X.jacobian(Y)
         [cos(phi), -rho*sin(phi)]
         [sin(phi),  rho*cos(phi)]
         [   2*rho,             0]
-
         >>> X = Matrix([rho*cos(phi), rho*sin(phi)])
         >>> X.jacobian(Y)
         [cos(phi), -rho*sin(phi)]
@@ -985,7 +987,7 @@ class Matrix(object):
 
     def QRdecomposition(self):
         """
-        Return Q*R where Q is orthogonal and R is upper triangular.
+        Return Q,R where A = Q*R, Q is orthogonal and R is upper triangular.
 
         Assumes full-rank square (for now).
         """
@@ -1006,10 +1008,42 @@ class Matrix(object):
                 R[i,j] = Q[:,i].dot(self[:,j])
         return Q,R
 
-    # TODO: QRsolve
+    def QRsolve(self, b):
+        """
+        Solve the linear system 'Ax = b'.
+
+        'self' is the matrix 'A', the method argument is the vector
+        'b'.  The method returns the solution vector 'x'.  If 'b' is a
+        matrix, the system is solved for each column of 'b' and the
+        return value is a matrix of the same shape as 'b'.
+
+        This method is slower (approximately by a factor of 2) but
+        more stable for floating-point arithmetic than the LUsolve method.
+        However, LUsolve usually uses an exact arithmetic, so you don't need
+        to use QRsolve.
+
+        This is mainly for educational purposes and symbolic matrices, for real
+        (or complex) matrices use sympy.mpmath.qr_solve.
+        """
+
+        Q, R = self.QRdecomposition()
+        y = Q.T * b
+
+        # back substitution to solve R*x = y:
+        # We build up the result "backwards" in the vector 'x' and reverse it
+        # only in the end.
+        x = []
+        n = R.rows
+        for j in range(n-1, -1, -1):
+            tmp = y[j,:]
+            for k in range(j+1, n):
+                tmp -= R[j,k] * x[n-1-k]
+            x.append(tmp/R[j,j])
+        return Matrix([row.mat for row in reversed(x)])
 
     # Utility functions
     def simplify(self):
+        """Simplify the elements of a matrix in place."""
         for i in xrange(len(self.mat)):
             self.mat[i] = simplify(self.mat[i])
 
@@ -1150,7 +1184,7 @@ class Matrix(object):
            algorithm which is an extension of the well known Gaussian
            elimination method. This approach is best suited for dense
            symbolic matrices and will result in a determinant with
-           minimal numer of fractions. It means that less term
+           minimal number of fractions. It means that less term
            rewriting is needed on resulting formulae.
 
            TODO: Implement algorithm for sparse matrices (SFF).
@@ -1191,7 +1225,7 @@ class Matrix(object):
                         if D.is_Atom:
                             M[i, j] = D
                         else:
-                            M[i, j] = Poly.cancel(D)
+                            M[i, j] = cancel(D)
 
             det = sign * M[n-1, n-1]
 
@@ -1274,7 +1308,6 @@ class Matrix(object):
         """
         Returns list of vectors (Matrix objects) that span nullspace of self
         """
-        assert self.cols >= self.rows
         reduced, pivots = self.rref(simplified)
         basis = []
         # create a set of vectors for the basis
@@ -1305,11 +1338,11 @@ class Matrix(object):
            its square sub-matrices composed by removing both i-th row
            and column, without division in the ground domain.
 
-           This method is particulary useful for computing determinant,
+           This method is particularly useful for computing determinant,
            principal minors and characteristic polynomial, when 'self'
-           has complicated coefficients eg. polynomials. Semi-direct
+           has complicated coefficients e.g. polynomials. Semi-direct
            usage of this algorithm is also important in computing
-           efficiently subresultant PRS.
+           efficiently sub-resultant PRS.
 
            Assuming that M is a square matrix of dimension N x N and
            I is N x N identity matrix,  then the following following
@@ -1320,8 +1353,8 @@ class Matrix(object):
            As a consequence, all polynomials generated by Berkowitz
            algorithm are monic.
 
-           >>> from sympy import *
-           >>> x,y,z = symbols('xyz')
+           >>> from sympy import Matrix
+           >>> from sympy.abc import x, y, z
 
            >>> M = Matrix([ [x,y,z], [1,0,0], [y,z,x] ])
 
@@ -1342,7 +1375,7 @@ class Matrix(object):
                parallel time using a small number of processors, ACM,
                Information Processing Letters 18, 1984, pp. 147-150
 
-           [2] M. Keber, Division-Free computation of subresultants
+           [2] M. Keber, Division-Free computation of sub-resultants
                using Bezout matrices, Tech. Report MPI-I-2006-1-006,
                Saarbrucken, 2006
 
@@ -1400,7 +1433,7 @@ class Matrix(object):
     def berkowitz_charpoly(self, x):
         """Computes characteristic polynomial minors using Berkowitz method."""
         coeffs, monoms = self.berkowitz()[-1], range(self.rows+1)
-        return Poly(list(zip(coeffs, reversed(monoms))), x)
+        return Poly(dict(zip(reversed(monoms), coeffs)), x)
 
     charpoly = berkowitz_charpoly
 
@@ -1411,7 +1444,7 @@ class Matrix(object):
     eigenvals = berkowitz_eigenvals
 
     def eigenvects(self, **flags):
-        """Return list of triples (eigenval, multiplicty, basis)."""
+        """Return list of triples (eigenval, multiplicity, basis)."""
 
         if 'multiple' in flags:
             del flags['multiple']
@@ -1461,12 +1494,16 @@ class Matrix(object):
         """
         return Matrix(self.cols*self.rows, 1, self.transpose().mat)
 
-    def vech(self, diagonal=True):
+    def vech(self, diagonal=True, check_symmetry=True):
         """
-        Return the unique elements of a symmetric Matrix as a one column matrix by stacking
+        Return the unique elements of a symmetric Matrix as a one column matrix
+
+         by stacking
         the elements in the lower triangle
 
-        diagonal ...... include the diagonal cells of self or not
+        Arguments:
+        diagonal -- include the diagonal cells of self or not
+        check_symmetry -- checks symmetry of self but not completely reliably
 
         >>> from sympy import Matrix
         >>> m=Matrix([ [1,2], [2,3] ])
@@ -1484,8 +1521,10 @@ class Matrix(object):
         c = self.cols
         if c != self.rows:
             raise TypeError("Matrix must be square")
-        if self != self.transpose():
-            raise TypeError("Matrix must be symmetric")
+        if check_symmetry:
+            self.simplify()
+            if self != self.transpose():
+                raise ValueError("Matrix appears to be asymmetric; consider check_symmetry=False")
         count = 0
         if diagonal:
             v = zeros( (c * (c + 1) // 2, 1) )
@@ -1511,7 +1550,7 @@ class Matrix(object):
         Example:
 
         >>> from sympy import Matrix, symbols
-        >>> x, y, z = symbols('x y z')
+        >>> from sympy.abc import x, y, z
         >>> A = Matrix([[1, 3, 0, 0], [y, z*z, 0, 0], [0, 0, x, 0], [0, 0, 0, 0]])
         >>> a1, a2, a3 = A.get_diag_blocks()
         >>> a1
@@ -1619,8 +1658,8 @@ def zeronm(n,m):
 
 def zeros(dims):
     """Create zero matrix of dimensions dims = (d1,d2)"""
-    n, m = _dims_to_nm( dims )
-    return Matrix(n,m,[S.Zero]*m*n)
+    n, m = _dims_to_nm(dims)
+    return Matrix(n, m, [S.Zero]*m*n)
 
 def one(n):
     """Create square all-one matrix n x n"""
@@ -1630,14 +1669,14 @@ def one(n):
 def ones(dims):
     """Create all-one matrix of dimensions dims = (d1,d2)"""
     n, m = _dims_to_nm( dims )
-    return Matrix(n,m,[S.One]*m*n)
+    return Matrix(n, m, [S.One]*m*n)
 
 def eye(n):
     """Create square identity matrix n x n"""
-    assert n>0
+    n = int(n)
     out = zeros(n)
     for i in range(n):
-        out[i,i]=S.One
+        out[i, i] = S.One
     return out
 
 def randMatrix(r,c,min=0,max=99,seed=[]):
@@ -1691,7 +1730,7 @@ def GramSchmidt(vlist, orthog=False):
     return out
 
 def wronskian(functions, var, method='bareis'):
-    """Compute wronskian for [] of functions
+    """Compute Wronskian for [] of functions
 
                    | f1    f2     ...   fn  |
                    | f1'   f2'    ...   fn' |
@@ -1717,7 +1756,7 @@ def casoratian(seqs, n, zero=True):
        equation Ly = 0 we want to compute kernel of L, which is a set
        of 'k' sequences: a(n), b(n), ... z(n).
 
-       Solutions of L are lineary independent iff their Casoratian,
+       Solutions of L are linearly independent iff their Casoratian,
        denoted as C(a, b, ..., z), do not vanish for n = 0.
 
        Casoratian is defined by k x k determinant:
@@ -1730,13 +1769,13 @@ def casoratian(seqs, n, zero=True):
                   +  a(n+k-1) b(n+k-1) . . . z(n+k-1) +
 
        It proves very useful in rsolve_hyper() where it is applied
-       to a generating set of a recurrence to factor out lineary
+       to a generating set of a recurrence to factor out linearly
        dependent solutions and return a basis.
 
-       >>> from sympy import *
+       >>> from sympy import Symbol, casoratian, factorial
        >>> n = Symbol('n', integer=True)
 
-       Exponential and factorial are lineary independent:
+       Exponential and factorial are linearly independent:
 
        >>> casoratian([2**n, factorial(n)], n) != 0
        True
@@ -1758,8 +1797,8 @@ def block_diag(matrices):
     Constructs a block diagonal matrix from a list of square matrices.
 
     Example:
-    >>> from sympy import block_diag, symbols
-    >>> x, y, z = symbols("x y z")
+    >>> from sympy import block_diag, symbols, Matrix
+    >>> from sympy.abc import a, b, c, x, y, z
     >>> a = Matrix([[1, 2], [2, 3]])
     >>> b = Matrix([[3, x], [y, 3]])
     >>> block_diag([a, b, b])
@@ -2021,3 +2060,68 @@ def a2idx(a):
         return int(a)
     if hasattr(a, "__index__"):
         return a.__index__()
+
+def symarray(prefix, shape):
+    """Create a numpy ndarray of symbols (as an object array).
+
+    The created symbols are named prefix_i1_i2_...  You should thus provide a
+    non-empty prefix if you want your symbols to be unique for different output
+    arrays, as Sympy symbols with identical names are the same object.
+
+    Parameters
+    ----------
+
+    prefix : string
+      A prefix prepended to the name of every symbol.
+
+    shape : int or tuple
+      Shape of the created array.  If an int, the array is one-dimensional; for
+      more than one dimension the shape must be a tuple.
+
+    Examples
+    --------
+
+    >> from sympy import symarray
+    >> symarray('', 3)
+    [_0 _1 _2]
+
+    If you want multiple symarrays to contain distinct symbols, you *must*
+    provide unique prefixes:
+
+    >> a = symarray('', 3)
+    >> b = symarray('', 3)
+    >> a[0] is b[0]
+    True
+    >> a = symarray('a', 3)
+    >> b = symarray('b', 3)
+    >> a[0] is b[0]
+    False
+
+    Creating symarrays with a prefix:
+    >> symarray('a', 3)
+    [a_0 a_1 a_2]
+
+    For more than one dimension, the shape must be given as a tuple:
+    >> symarray('a', (2,3))
+    [[a_0_0 a_0_1 a_0_2]
+    [a_1_0 a_1_1 a_1_2]]
+    >> symarray('a', (2,3,2))
+    [[[a_0_0_0 a_0_0_1]
+      [a_0_1_0 a_0_1_1]
+      [a_0_2_0 a_0_2_1]]
+    <BLANKLINE>
+     [[a_1_0_0 a_1_0_1]
+      [a_1_1_0 a_1_1_1]
+      [a_1_2_0 a_1_2_1]]]
+
+    """
+    try:
+        import numpy as np
+    except ImportError:
+        raise ImportError("symarray requires numpy to be installed")
+
+    arr = np.empty(shape, dtype=object)
+    for index in np.ndindex(shape):
+        arr[index] = Symbol('%s_%s' % (prefix, '_'.join(map(str, index))))
+    return arr
+

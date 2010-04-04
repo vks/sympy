@@ -136,8 +136,7 @@ def test_solve_polynomial_cv_1a():
     assert solve( x**Rational(1,3) - 3, x) == [27]
     ans = solve(x**Rational(1,2)+x**Rational(1,3)+x**Rational(1,4),x)
     assert set([NS(w, n=2) for w in ans]) == \
-           set(['1.0e-2', '-9.5 - 2.8*I', '0', '-9.5 + 2.8*I'])
-
+        set(['0.010', '-9.5 + 2.8*I', '0', '-9.5 - 2.8*I'])
 def test_solve_polynomial_cv_1b():
     x, a = symbols('x a')
 
@@ -241,7 +240,7 @@ def test_tsolve_1():
     assert solve(exp(x)+exp(-x)-y, x)== [-log(4) + log(2*y + 2*(-4 + y**2)**(Rational(1, 2))),
                                           -log(4) + log(2*y - 2*(-4 + y**2)**(Rational(1, 2)))]
     # issue #1409
-    assert solve(y - b*x/(a+x), x) == [a*y/(b - y)]
+    assert solve(y - b*x/(a+x), x) in [[-a*y/(y - b)], [a*y/(b - y)]]
     assert solve(y - b*exp(a/x), x) == [a/(-log(b) + log(y))]
     # issue #1408
     assert solve(y-b/(1+a*x),x) == [(b - y)/(a*y)]
@@ -299,3 +298,4 @@ def test_issue626():
     F = x**2 + f(x)**2 - 4*x - 1
     e = F.diff(x)
     assert solve(e, f(x).diff(x)) == [(2-x)/f(x)]
+

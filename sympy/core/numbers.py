@@ -2,9 +2,8 @@ from basic import Atom, SingletonMeta, S, Basic
 from decorators import _sympifyit
 from cache import Memoizer, cacheit, clear_cache
 import sympy.mpmath as mpmath
-import sympy.mpmath.libmpf as mlib
-import sympy.mpmath.libmpc as mlibc
-from sympy.mpmath.libelefun import mpf_pow, mpf_pi, mpf_e, phi_fixed
+import sympy.mpmath.libmp as mlib
+from sympy.mpmath.libmp import mpf_pow, mpf_pi, mpf_e, phi_fixed
 import decimal
 
 rnd = mlib.round_nearest
@@ -58,6 +57,7 @@ def ilcm(a, b):
 def igcdex(a, b):
     """Returns x, y, g such that g = x*a + y*b = gcd(a, b).
 
+       >>> from sympy.core.numbers import igcdex
        >>> igcdex(2, 3)
        (-1, 1, 1)
        >>> igcdex(10, 12)
@@ -162,7 +162,7 @@ class Number(Atom):
 
     def __new__(cls, *obj):
         if len(obj)==1:
-          obj=obj[0]
+            obj=obj[0]
         if isinstance(obj, (int, long)):
             return Integer(obj)
         if isinstance(obj,tuple) and len(obj)==2:
@@ -174,7 +174,7 @@ class Number(Atom):
         raise TypeError("expected str|int|long|float|Decimal|Number object but got %r" % (obj))
 
     def _as_mpf_val(self, prec):
-        """Evaluate to mpf tuple accurate to at least prec bits"""
+        """Evaluation of mpf tuple accurate to at least prec bits."""
         raise NotImplementedError('%s needs ._as_mpf_val() method' % \
             (self.__class__.__name__))
 
@@ -215,7 +215,6 @@ class Number(Atom):
     def as_coeff_terms(self, x=None):
         # a -> c * t
         return self, tuple()
-
 
 class Real(Number):
     """
@@ -274,7 +273,7 @@ class Real(Number):
         return self._mpf_, max(prec, self._prec)
 
     def __new__(cls, num, prec=15):
-        prec = mpmath.settings.dps_to_prec(prec)
+        prec = mlib.libmpf.dps_to_prec(prec)
         if isinstance(num, (int, long)):
             return Integer(num)
         if isinstance(num, (str, decimal.Decimal)):
@@ -360,7 +359,7 @@ class Real(Number):
                 y = mpf_pow(b, e, prec, rnd)
                 return Real._new(y, prec)
             except mlib.ComplexResult:
-                re, im = mlibc.mpc_pow((b, mlib.fzero), (e, mlib.fzero), prec, rnd)
+                re, im = mlib.mpc_pow((b, mlib.fzero), (e, mlib.fzero), prec, rnd)
                 return Real._new(re, prec) + Real._new(im, prec) * S.ImaginaryUnit
 
     def __abs__(self):
@@ -468,6 +467,7 @@ class Rational(Number):
 
     Examples
     ========
+        >>> from sympy import Rational
         >>> Rational(3)
         3
         >>> Rational(1,2)
@@ -842,10 +842,10 @@ class Integer(Rational):
             return Integer(-self.p)
 
     def __mod__(self, other):
-        return self.p % other
+        return Integer(self.p % other)
 
     def __rmod__(self, other):
-        return other % self.p
+        return Integer(other % self.p)
 
     # TODO make it decorator + bytecodehacks?
     def __add__(a, b):
@@ -1033,6 +1033,80 @@ class Integer(Rational):
 
     def __rfloordiv__(self, other):
         return Integer(Integer(other).p // self.p)
+
+    def half_gcdex(a, b):
+        """Half Extended Euclidean Algorithm. """
+        s, _, h = a.gcdex(b)
+        return s, h
+
+    def gcdex(a, b):
+        """Extended Euclidean Algorithm. """
+        if type(b) is int:
+            return tuple(map(Integer, igcdex(int(a), b)))
+        else:
+            b = _sympify(b)
+
+            if b.is_Integer:
+                return tuple(map(Integer, igcdex(int(a), int(b))))
+            else:
+                raise ValueError("expected an integer, got %s" % b)
+
+    def invert(a, b):
+        """Invert `a` modulo `b`, if possible. """
+        if type(b) is int:
+            a = int(a)
+        else:
+            b = _sympify(b)
+
+            if b.is_Integer:
+                a, b = int(a), int(b)
+            else:
+                raise ValueError("expected an integer, got %s" % b)
+
+        s, _, h = igcdex(a, b)
+
+        if h == 1:
+            return Integer(s % b)
+        else:
+            raise ZeroDivisionError("zero divisor")
+
+    def cofactors(a, b):
+        """Returns GCD and cofactors of input arguments. """
+        if type(b) is int:
+            gcd = Integer(igcd(int(a), b))
+            return gcd, a//gcd, Integer(b)//gcd
+        else:
+            b = _sympify(b)
+
+            if b.is_Integer:
+                gcd = Integer(igcd(int(a), int(b)))
+                return gcd, a//gcd, b//gcd
+            else:
+                raise ValueError("expected an integer, got %s" % b)
+
+    def gcd(a, b):
+        """Returns greates common divisor of input arguments. """
+        if type(b) is int:
+            return Integer(igcd(int(a), b))
+        else:
+            b = _sympify(b)
+
+            if b.is_Integer:
+                return Integer(igcd(int(a), int(b)))
+            else:
+                raise ValueError("expected an integer, got %s" % b)
+
+    def lcm(a, b):
+        """Returns least common multiple of input arguments. """
+        if type(b) is int:
+            return Integer(ilcm(int(a), b))
+        else:
+            b = _sympify(b)
+
+            if b.is_Integer:
+                return Integer(ilcm(int(a), int(b)))
+            else:
+                raise ValueError("expected an integer, got %s" % b)
 
 class Zero(Integer):
     __metaclass__ = SingletonMeta
@@ -1527,7 +1601,8 @@ class EulerGamma(NumberSymbol):
     __slots__ = []
 
     def _as_mpf_val(self, prec):
-        return mlib.from_man_exp(mpmath.gammazeta.euler_fixed(prec+10), -prec-10)
+        return mlib.from_man_exp(mlib.libhyper.euler_fixed(
+            prec+10), -prec-10)
 
     def approximation_interval(self, number_cls):
         if issubclass(number_cls, Integer):
@@ -1549,7 +1624,7 @@ class Catalan(NumberSymbol):
     __slots__ = []
 
     def _as_mpf_val(self, prec):
-        return mlib.from_man_exp(mpmath.gammazeta.catalan_fixed(prec+10), -prec-10)
+        return mlib.from_man_exp(mlib.catalan_fixed(prec+10), -prec-10)
 
     def approximation_interval(self, number_cls):
         if issubclass(number_cls, Integer):
@@ -1633,9 +1708,9 @@ Basic.singleton['GoldenRatio'] = GoldenRatio
 Basic.singleton['EulerGamma'] = EulerGamma
 Basic.singleton['Catalan'] = Catalan
 
-from basic import Basic, Atom, S, C, SingletonMeta
-from cache import Memoizer
+from basic import Basic, S, C
 from sympify import _sympify, SympifyError
 from function import FunctionClass
 from power import Pow, integer_nthroot
 from mul import Mul
+

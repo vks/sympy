@@ -1,6 +1,6 @@
 import random
 from sympy.mpmath import *
-from sympy.mpmath.libmpf import *
+from sympy.mpmath.libmp import *
 
 
 def test_basic_string():
@@ -30,6 +30,13 @@ def test_basic_string():
     assert str(mpf(-1.23402834e-15)) == '-1.23402834e-15'
     assert str(mpf(-1.2344e-15)) == '-1.2344e-15'
     assert repr(mpf(-1.2344e-15)) == "mpf('-1.2343999999999999e-15')"
+
+def test_pretty():
+    mp.pretty = True
+    assert repr(mpf(2.5)) == '2.5'
+    assert repr(mpc(2.5,3.5)) == '(2.5 + 3.5j)'
+    assert repr(mpi(2.5,3.5)) == '[2.5, 3.5]'
+    mp.pretty = False
 
 def test_str_whitespace():
     assert mpf('1.26 ') == 1.26
@@ -111,10 +118,10 @@ def test_conversion_methods():
         pass
     class SomethingReal:
         def _mpmath_(self, prec, rounding):
-            return make_mpf(from_str('1.3', prec, rounding))
+            return mp.make_mpf(from_str('1.3', prec, rounding))
     class SomethingComplex:
         def _mpmath_(self, prec, rounding):
-            return make_mpc((from_str('1.3', prec, rounding), \
+            return mp.make_mpc((from_str('1.3', prec, rounding), \
                 from_str('1.7', prec, rounding)))
     x = mpf(3)
     z = mpc(3)
@@ -145,7 +152,9 @@ def test_conversion_methods():
     assert x.__ge__(a) is NotImplemented
     assert x.__eq__(a) is NotImplemented
     assert x.__ne__(a) is NotImplemented
-    assert x.__cmp__(a) is NotImplemented
+    # implementation detail
+    if hasattr(x, "__cmp__"):
+        assert x.__cmp__(a) is NotImplemented
     assert x.__sub__(a) is NotImplemented
     assert x.__rsub__(a) is NotImplemented
     assert x.__mul__(a) is NotImplemented

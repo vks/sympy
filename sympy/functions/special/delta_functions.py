@@ -1,12 +1,7 @@
-
-from sympy.core.basic import Basic, S, C, sympify
+from sympy.core.basic import S, sympify
 from sympy.core.function import Function
-from sympy.functions.elementary.miscellaneous import sqrt
-from sympy.core.cache import cacheit
 import sympy.polys
 from sympy.core import diff
-
-from sympy.utilities.decorator import deprecated
 
 ###############################################################################
 ################################ DELTA FUNCTION ###############################
@@ -21,7 +16,7 @@ class DiracDelta(Function):
     4) DiracDelta(g(x)) = Sum_i(DiracDelta(x-xi)/abs(g'(xi)))
        Where xis are the roots of g
 
-    Derivatives of k order of DiraDelta have the following property:
+    Derivatives of k order of DiracDelta have the following property:
     5) DiracDelta(x,k) = 0, for all x!=0
 
 
@@ -40,11 +35,6 @@ class DiracDelta(Function):
             return DiracDelta(self.args[0],k+1)
         else:
             raise ArgumentIndexError(self, argindex)
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg, k = 0):
-        return cls.eval(arg, k)
 
     @classmethod
     def eval(cls, arg, k=0):
@@ -73,8 +63,8 @@ class DiracDelta(Function):
            Examples
            --------
 
-           >>> from sympy import *
-           >>> x, y = symbols('xy')
+           >>> from sympy import DiracDelta
+           >>> from sympy.abc import x, y
 
            >>> DiracDelta(x*y).simplify(x)
            DiracDelta(x)/abs(y)
@@ -88,7 +78,7 @@ class DiracDelta(Function):
         if not self.args[0].has(x) or (len(self.args)>1 and self.args[1] != 0 ):
             return self
         try:
-            argroots = sympy.polys.rootfinding.roots(self.args[0],x, \
+            argroots = sympy.polys.polyroots.roots(self.args[0],x, \
                                                      multiple=True)
             result = 0
             valid = True
@@ -111,7 +101,7 @@ class DiracDelta(Function):
     def is_simple(self,x):
         """is_simple(self, x)
 
-           Tells wether the argument(args[0]) of DiracDelta is a linear
+           Tells whether the argument(args[0]) of DiracDelta is a linear
            expression in x.
 
            x can be:
@@ -121,8 +111,8 @@ class DiracDelta(Function):
            Examples
            --------
 
-           >>> from sympy import *
-           >>> x, y = symbols('xy')
+           >>> from sympy import DiracDelta, cos
+           >>> from sympy.abc import x, y
 
            >>> DiracDelta(x*y).is_simple(x)
            True
@@ -138,7 +128,7 @@ class DiracDelta(Function):
         """
         p = self.args[0].as_poly(x)
         if p:
-            return p.degree == 1
+            return p.degree() == 1
         return False
 ###############################################################################
 ############################## HEAVISIDE FUNCTION #############################
@@ -151,7 +141,7 @@ class Heaviside(Function):
                         ( 0, if x<0
     2) Heaviside(x) = < [*]  1/2 if x==0
                         ( 1, if x>0
-    [*]Regarding to the value at 0, Mathemathica adopt the value H(0)=1,
+    [*]Regarding to the value at 0, Mathematica adopt the value H(0)=1,
     and Maple H(0)=undefined
 
     I think is better to have H(0)=1/2, due to the following:
@@ -186,11 +176,6 @@ class Heaviside(Function):
             raise ArgumentIndexError(self, argindex)
 
     @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
-
-    @classmethod
     def eval(cls, arg):
         arg = sympify(arg)
         if arg is S.NaN:
@@ -201,3 +186,4 @@ class Heaviside(Function):
             return S.Half
         elif arg.is_positive:
             return S.One
+

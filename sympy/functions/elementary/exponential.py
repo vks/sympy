@@ -1,12 +1,8 @@
-
-from sympy.core.basic import Basic, S, C, sympify, Wild
-from sympy.core.function import Lambda, Function, Function, expand_log
+from sympy.core.basic import S, C, sympify, Wild
+from sympy.core.function import Lambda, Function, expand_log
 from sympy.core.cache import cacheit
 
-from sympy.utilities.decorator import deprecated
-
 from sympy.ntheory import multiplicity
-from sympy.core.basic import Mul
 
 class exp(Function):
 
@@ -20,15 +16,6 @@ class exp(Function):
 
     def inverse(self, argindex=1):
         return log
-
-    @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
 
     @classmethod
     def eval(cls, arg):
@@ -261,6 +248,9 @@ class exp(Function):
         import sage.all as sage
         return sage.exp(self.args[0]._sage_())
 
+    def as_Pow(self):
+        return S.Exp1, self.args[0]
+
 class log(Function):
 
     nargs = (1,2)
@@ -275,15 +265,6 @@ class log(Function):
 
     def inverse(self, argindex=1):
         return exp
-
-    @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg, base=None):
-        return cls.eval(arg, base)
 
     @classmethod
     def eval(cls, arg, base=None):
@@ -542,11 +523,6 @@ class LambertW(Function):
     nargs = 1
 
     @classmethod
-    @deprecated
-    def canonize(cls, x):
-        return cls.eval(x)
-
-    @classmethod
     def eval(cls, x):
         if x == S.Zero: return S.Zero
         if x == S.Exp1: return S.One
@@ -560,3 +536,4 @@ class LambertW(Function):
             return LambertW(x)/(x*(1+LambertW(x)))
         else:
             raise ArgumentIndexError(self, argindex)
+

@@ -1,5 +1,4 @@
-
-from sympy.core import Basic, S, C, Symbol, Wild, Pow, Add, sympify, diff, oo
+from sympy.core import Basic, S, C, Symbol, Wild, Add, sympify, diff, oo
 
 from sympy.integrals.trigonometry import trigintegrate
 from sympy.integrals.deltafunctions import deltaintegrate
@@ -7,11 +6,9 @@ from sympy.integrals.rationaltools import ratint
 from sympy.integrals.risch import heurisch
 from sympy.utilities import threaded, flatten
 from sympy.utilities.iterables import make_list
-from sympy.simplify import apart
-from sympy.series import limit
 from sympy.polys import Poly
 from sympy.solvers import solve
-from sympy.functions import DiracDelta, Heaviside, Piecewise
+from sympy.functions import Piecewise
 from sympy.geometry import Curve
 from sympy.functions.elementary.piecewise import piecewise_fold
 
@@ -58,7 +55,7 @@ class Integral(Basic):
 
                 raise ValueError("Invalid integration variable or limits: %s" % str(symbols))
         else:
-            # no symbols provided -- let's compute full antiderivative
+            # no symbols provided -- let's compute full anti-derivative
             limits = [(symb,None) for symb in function.atoms(Symbol)]
 
             if not limits:
@@ -162,12 +159,23 @@ class Integral(Basic):
                     function = antideriv
                 else:
                     a, b = ab
+
                     if deep:
                         if isinstance(a, Basic):
                             a = a.doit(**hints)
                         if isinstance(b, Basic):
                             b = b.doit(**hints)
-                    function = antideriv._eval_interval(x, a, b)
+
+                    if antideriv.is_Poly:
+                        gens = list(antideriv.gens)
+                        gens.remove(x)
+
+                        antideriv = antideriv.as_basic()
+
+                        function = antideriv._eval_interval(x, a, b)
+                        function = Poly(function, *gens)
+                    else:
+                        function = antideriv._eval_interval(x, a, b)
 
         return function
 
@@ -222,7 +230,7 @@ class Integral(Basic):
                integrate(diff(self.function, sym), (int_var, lower_limit, upper_limit))
 
     def _eval_integral(self, f, x):
-        """Calculate the antiderivative to the function f(x).
+        """Calculate the anti-derivative to the function f(x).
 
         This is a powerful function that should in theory be able to integrate
         everything that can be integrated. If you find something, that it
@@ -230,8 +238,8 @@ class Integral(Basic):
 
         (1) Simple heuristics (based on pattern matching and integral table):
 
-         - most frequently used functions (eg. polynomials)
-         - functions non-integrable by any of the following algorithms (eg.
+         - most frequently used functions (e.g. polynomials)
+         - functions non-integrable by any of the following algorithms (e.g.
            exp(-x**2))
 
         (2) Integration of rational functions:
@@ -271,7 +279,7 @@ class Integral(Basic):
             return f.integrate(x)
 
         # Piecewise antiderivatives need to call special integrate.
-        if isinstance(f,Piecewise):
+        if f.func is Piecewise:
             return f._eval_integral(x)
 
         # let's cut it short if `f` does not depend on `x`
@@ -282,13 +290,14 @@ class Integral(Basic):
         poly = f.as_poly(x)
 
         if poly is not None:
-            return poly.integrate(x).as_basic()
+            return poly.integrate().as_basic()
 
         # since Integral(f=g1+g2+...) == Integral(g1) + Integral(g2) + ...
         # we are going to handle Add terms separately,
         # if `f` is not Add -- we only have one term
         parts = []
-        for g in make_list(f, Add):
+        args = make_list(f, Add)
+        for g in args:
             coeff, g = g.as_independent(x)
 
             # g(x) = const
@@ -334,6 +343,23 @@ class Integral(Basic):
 
             # fall back to the more general algorithm
             h = heurisch(g, x, hints=[])
+
+            # if we failed maybe it was because we had
+            # a product that could have been expanded,
+            # so let's try an expansion of the whole
+            # thing before giving up; we don't try this
+            # out the outset because there are things
+            # that cannot be solved unless they are
+            # NOT expanded e.g., x**x*(1+log(x)). There
+            # should probably be a checker somewhere in this
+            # routine to look for such cases and try to do
+            # collection on the expressions if they are already
+            # in an expanded form
+            if not h and len(args) == 1:
+                f = f.expand(mul=True, deep=False)
+                if f.is_Add:
+                    return self._eval_integral(f, x)
+
 
             if h is not None:
                 parts.append(coeff * h)
@@ -404,8 +430,9 @@ class Integral(Basic):
 
         Examples:
 
-            >>> from sympy import sqrt, symbols
-            >>> x = symbols("x")
+            >>> from sympy import sqrt
+            >>> from sympy.abc import x
+            >>> from sympy.integrals import Integral
             >>> e = Integral(sqrt(x**3+1), (x, 2, 10))
             >>> e
             Integral((1 + x**3)**(1/2), (x, 2, 10))
@@ -424,8 +451,8 @@ class Integral(Basic):
 
         Examples:
 
-            >>> from sympy import sqrt, symbols
-            >>> x = symbols("x")
+            >>> from sympy import sqrt
+            >>> from sympy.abc import x
             >>> e = Integral(sqrt(x**3+1), (x, 2, 10))
             >>> e
             Integral((1 + x**3)**(1/2), (x, 2, 10))
@@ -479,16 +506,16 @@ def integrate(*args, **kwargs):
        Several variables can be specified, in which case the result is multiple
        integration.
 
-       Also, if no var is specified at all, then full-antiderivative of f is
-       returned. This is equivalent of integrating f over all it's variables.
+       Also, if no var is specified at all, then the full anti-derivative of f is
+       returned. This is equivalent to integrating f over all its variables.
 
        Examples
 
-       >>> from sympy import *
-       >>> x, y = symbols('xy')
+       >>> from sympy import integrate, log
+       >>> from sympy.abc import a, x, y
 
        >>> integrate(x*y, x)
-       (1/2)*y*x**2
+       y*x**2/2
 
        >>> integrate(log(x), x)
        -x + x*log(x)
@@ -497,10 +524,10 @@ def integrate(*args, **kwargs):
        1 - a + a*log(a)
 
        >>> integrate(x)
-       (1/2)*x**2
+       x**2/2
 
        >>> integrate(x*y)
-       (1/4)*x**2*y**2
+       x**2*y**2/4
 
        See also the doctest of Integral._eval_integral(), which explains
        thoroughly the strategy that SymPy uses for integration.
@@ -522,11 +549,11 @@ def line_integrate(field, curve, vars):
 
        Examples
        --------
-       >>> from sympy import *
-       >>> x, y, t = symbols('xyt')
+       >>> from sympy import Curve, line_integrate, E, ln
+       >>> from sympy.abc import x, y, t
        >>> C = Curve([E**t + 1, E**t - 1], (t, 0, ln(2)))
        >>> line_integrate(x + y, C, [x, y])
-       3*sqrt(2)
+       3*2**(1/2)
 
     """
     F = sympify(field)
@@ -556,3 +583,4 @@ def line_integrate(field, curve, vars):
 
     integral = Integral(Ft, curve.limits).doit(deep = False)
     return integral
+

@@ -1,4 +1,6 @@
-from sympy import diff, Integral, Limit, sin, Symbol, Integer, Rational, cos, tan, asin, acos, atan, sinh, cosh, tanh, asinh, acosh, atanh, E, I, oo, pi, GoldenRatio, EulerGamma
+from sympy import diff, Integral, Limit, sin, Symbol, Integer, Rational, cos, \
+    tan, asin, acos, atan, sinh, cosh, tanh, asinh, acosh, atanh, E, I, oo, \
+    pi, GoldenRatio, EulerGamma, raises
 from sympy.printing.mathml import mathml, MathMLPrinter
 from xml.dom.minidom import parseString
 
@@ -6,7 +8,7 @@ x = Symbol('x')
 mp = MathMLPrinter()
 
 def test_printmethod():
-    pass #TODO
+    assert mp.doprint(1+x) == '<apply><plus/><cn>1</cn><ci>x</ci></apply>'
 
 def test_mathml_core():
     mml_1 = mp._print(1+x)
@@ -257,3 +259,5 @@ def test_symbol():
     assert mml.childNodes[0].childNodes[1].childNodes[2].childNodes[0].nodeValue == 'a'
     del mml
 
+def test_settings():
+    raises(TypeError, 'mathml(Symbol("x"), method="garbage")')

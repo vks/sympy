@@ -1,7 +1,4 @@
-
-from sympy.core import (Basic, S, C, Add, Mul, Symbol, Equality, Interval,
-    sympify, symbols, Wild)
-from sympy.functions import factorial
+from sympy.core import (Basic, S, C, Symbol, Equality, Interval, sympify, Wild)
 from sympy.solvers import solve
 from sympy.utilities import flatten
 
@@ -93,7 +90,8 @@ class Sum(Basic):
         and e is the estimated error (taken to be the magnitude of
         the first omitted term in the tail):
 
-            >>> k = Symbol('k')
+            >>> from sympy.abc import k, a, b
+            >>> from sympy import Sum
             >>> Sum(1/k, (k, 2, 5)).doit().evalf()
             1.28333333333333
             >>> s, e = Sum(1/k, (k, 2, 5)).euler_maclaurin()
@@ -105,7 +103,6 @@ class Sum(Basic):
 
         The endpoints may be symbolic:
 
-            >>> k, a, b = symbols('kab')
             >>> s, e = Sum(1/k, (k, a, b)).euler_maclaurin()
             >>> s
             -log(a) + log(b) + 1/(2*a) + 1/(2*b)
@@ -173,11 +170,11 @@ def sum(*args, **kwargs):
 
 
 def getab(expr):
-    cls = expr.__class__
+    cls = expr.func
     return cls(expr.args[0]), cls(*expr.args[1:])
 
 def telescopic_direct(L, R, n, (i, a, b)):
-    '''Returns the direct summation of the terms of a telescopic sum
+    """Returns the direct summation of the terms of a telescopic sum
 
     L is the term with lower index
     R is the term with higher index
@@ -185,11 +182,12 @@ def telescopic_direct(L, R, n, (i, a, b)):
 
     For example:
 
-    >>> k,a,b = symbols('kab')
+    >>> from sympy.concrete.summations import telescopic_direct
+    >>> from sympy.abc import k, a, b
     >>> telescopic_direct(1/k, -1/(k+2), 2, (k, a, b))
     1/a + 1/(1 + a) - 1/(1 + b) - 1/(2 + b)
 
-    '''
+    """
     s = 0
     for m in xrange(n):
         s += L.subs(i,a+m) + R.subs(i,b-m)
@@ -216,7 +214,7 @@ def telescopic(L, R, (i, a, b)):
         m = Symbol("m")
         try:
             s = solve(L.subs(i, i + m) + R, m)[0]
-        except ValueError:
+        except IndexError:#(ValueError, IndexError):
             pass
     if s and s.is_Integer:
         if s < 0:

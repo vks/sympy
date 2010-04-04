@@ -1,10 +1,7 @@
-
-from sympy.core.basic import Basic, S, C, sympify
-from sympy.core.function import Lambda, Function
+from sympy.core.basic import S, C, sympify
+from sympy.core.function import Function
 from miscellaneous import sqrt
 from sympy.core.cache import cacheit
-
-from sympy.utilities.decorator import deprecated
 
 ###############################################################################
 ########################## TRIGONOMETRIC FUNCTIONS ############################
@@ -23,8 +20,8 @@ class sin(Function):
 
     Examples
     ========
-        >>> from sympy import *
-        >>> x = Symbol('x')
+        >>> from sympy import sin, pi
+        >>> from sympy.abc import x
         >>> sin(x**2).diff(x)
         2*x*cos(x**2)
         >>> sin(1).diff(x)
@@ -58,111 +55,82 @@ class sin(Function):
         return asin
 
     @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(args)
-
-    @classmethod
     def eval(cls, arg):
         if arg.is_Number:
             if arg is S.NaN:
                 return S.NaN
             elif arg is S.Zero:
                 return S.Zero
-            elif arg.is_negative:
-                return -cls(-arg)
-        else:
-            i_coeff = arg.as_coefficient(S.ImaginaryUnit)
+            elif arg is S.Infinity:
+                return
 
-            if i_coeff is not None:
-                return S.ImaginaryUnit * C.sinh(i_coeff)
-            else:
-                pi_coeff = arg.as_coefficient(S.Pi)
+        if arg.could_extract_minus_sign():
+            return -cls(-arg)
 
-                if pi_coeff is not None:
-                    if pi_coeff.is_integer:
-                        return S.Zero
-                    elif pi_coeff.is_Rational:
-                        cst_table_some = {
-                            2 : S.One,
-                            3 : S.Half*sqrt(3),
-                            4 : S.Half*sqrt(2),
-                            6 : S.Half,
-                        }
+        i_coeff = arg.as_coefficient(S.ImaginaryUnit)
+        if i_coeff is not None:
+            return S.ImaginaryUnit * C.sinh(i_coeff)
 
-                        cst_table_more = {
-                            (1, 5) : sqrt((5 - sqrt(5)) / 8),
-                            (2, 5) : sqrt((5 + sqrt(5)) / 8)
-                        }
+        pi_coeff = arg.as_coefficient(S.Pi)
+        if pi_coeff is not None:
+            if pi_coeff.is_integer:
+                return S.Zero
+            elif pi_coeff.is_Rational:
+                cst_table_some = {
+                    2 : S.One,
+                    3 : S.Half*sqrt(3),
+                    4 : S.Half*sqrt(2),
+                    6 : S.Half,
+                }
 
-                        p = pi_coeff.p
-                        q = pi_coeff.q
+                cst_table_more = {
+                    (1, 5) : sqrt((5 - sqrt(5)) / 8),
+                    (2, 5) : sqrt((5 + sqrt(5)) / 8)
+                }
 
-                        Q, P = p // q, p % q
+                p = pi_coeff.p
+                q = pi_coeff.q
 
-                        try:
-                            result = cst_table_some[q]
-                        except KeyError:
-                            if abs(P) > q // 2:
-                                P = q - P
+                Q, P = p // q, p % q
 
-                            try:
-                                result = cst_table_more[(P, q)]
-                            except KeyError:
-                                if P != p:
-                                    result = cls(C.Rational(P, q)*S.Pi)
-                                else:
-                                    return None
+                try:
+                    result = cst_table_some[q]
+                except KeyError:
+                    if abs(P) > q // 2:
+                        P = q - P
 
-                        if Q % 2 == 1:
-                            return -result
+                    try:
+                        result = cst_table_more[(P, q)]
+                    except KeyError:
+                        if P != p:
+                            result = cls(C.Rational(P, q)*S.Pi)
                         else:
-                            return result
+                            return None
 
-                if arg.is_Mul and arg.args[0].is_negative:
-                    return -cls(-arg)
-                if arg.is_Add:
-                    x, m = arg.as_independent(S.Pi)
-                    if m in [S.Pi/2, S.Pi]:
-                        return sin(m)*cos(x)+cos(m)*sin(x)
-                    # normalize sin(-x-y) to -sin(x+y)
-                    if arg.args[0].is_Mul:
-                        if arg.args[0].args[0].is_negative:
-                            # e.g. arg = -x - y
-                            if (-arg).args[0].is_Mul:
-                                if (-arg).args[0].args[0].is_negative:
-                                    # This is to prevent infinite recursion in
-                                    # the case sin(-x+y), for which
-                                    # -arg = -y + x. See also #838 for the
-                                    # root of the problem here.
-                                    return
-                            # convert sin(-x-y) to -sin(x+y)
-                            return -cls(-arg)
-                    if arg.args[0].is_negative:
-                        if (-arg).args[0].is_negative:
-                            # This is to avoid infinite recursion in the case
-                            # sin(-x-1)
-                            return
-                        return -cls(-arg)
+                if Q % 2 == 1:
+                    return -result
+                else:
+                    return result
 
-            if isinstance(arg, asin):
-                return arg.args[0]
+        if arg.is_Add:
+            x, m = arg.as_independent(S.Pi)
+            if m in [-S.Pi, -S.Pi/2, S.Pi/2, S.Pi]:
+                return sin(m)*cos(x)+cos(m)*sin(x)
 
-            if isinstance(arg, atan):
-                x = arg.args[0]
-                return x / sqrt(1 + x**2)
+        if arg.func is asin:
+            return arg.args[0]
 
-            if isinstance(arg, acos):
-                x = arg.args[0]
-                return sqrt(1 - x**2)
+        if arg.func is atan:
+            x = arg.args[0]
+            return x / sqrt(1 + x**2)
 
-            if isinstance(arg, acot):
-                x = arg.args[0];
-                return 1 / (sqrt(1 + 1 / x**2) * x)
+        if arg.func is acos:
+            x = arg.args[0]
+            return sqrt(1 - x**2)
+
+        if arg.func is acot:
+            x = arg.args[0];
+            return 1 / (sqrt(1 + 1 / x**2) * x)
 
     @staticmethod
     @cacheit
@@ -190,7 +158,7 @@ class sin(Function):
         return 2*tan_half/(1 + tan_half**2)
 
     def _eval_rewrite_as_cot(self, arg):
-        cot_half = S.Cot(S.Half*arg)
+        cot_half = cot(S.Half*arg)
         return 2*cot_half/(1 + cot_half**2)
 
     def _eval_conjugate(self):
@@ -260,8 +228,8 @@ class cos(Function):
 
     Examples
     ========
-        >>> from sympy import *
-        >>> x = Symbol('x')
+        >>> from sympy import cos, pi
+        >>> from sympy.abc import x
         >>> cos(x**2).diff(x)
         -2*x*sin(x**2)
         >>> cos(1).diff(x)
@@ -295,110 +263,79 @@ class cos(Function):
         return acos
 
     @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
-
-    @classmethod
     def eval(cls, arg):
         if arg.is_Number:
             if arg is S.NaN:
                 return S.NaN
             elif arg is S.Zero:
                 return S.One
-            elif arg.is_negative:
-                return cls(-arg)
-        else:
-            i_coeff = arg.as_coefficient(S.ImaginaryUnit)
 
-            if i_coeff is not None:
-                return C.cosh(i_coeff)
-            else:
-                pi_coeff = arg.as_coefficient(S.Pi)
+        if arg.could_extract_minus_sign():
+            return cls(-arg)
 
-                if pi_coeff is not None:
-                    if pi_coeff.is_Rational:
-                        cst_table_some = {
-                            1 : S.One,
-                            2 : S.Zero,
-                            3 : S.Half,
-                            4 : S.Half*sqrt(2),
-                            6 : S.Half*sqrt(3),
-                        }
+        i_coeff = arg.as_coefficient(S.ImaginaryUnit)
+        if i_coeff is not None:
+            return C.cosh(i_coeff)
 
-                        cst_table_more = {
-                            (1, 5) : (sqrt(5) + 1)/4,
-                            (2, 5) : (sqrt(5) - 1)/4
-                        }
+        pi_coeff = arg.as_coefficient(S.Pi)
+        if pi_coeff is not None:
+            if pi_coeff.is_Rational:
+                cst_table_some = {
+                    1 : S.One,
+                    2 : S.Zero,
+                    3 : S.Half,
+                    4 : S.Half*sqrt(2),
+                    6 : S.Half*sqrt(3),
+                }
 
-                        p = pi_coeff.p
-                        q = pi_coeff.q
+                cst_table_more = {
+                    (1, 5) : (sqrt(5) + 1)/4,
+                    (2, 5) : (sqrt(5) - 1)/4
+                }
 
-                        Q, P = 2*p // q, p % q
+                p = pi_coeff.p
+                q = pi_coeff.q
 
-                        try:
-                            result = cst_table_some[q]
-                        except KeyError:
-                            if abs(P) > q // 2:
-                                P = q - P
+                Q, P = 2*p // q, p % q
 
-                            try:
-                                result = cst_table_more[(P, q)]
-                            except KeyError:
-                                if P != p:
-                                    result = cls(C.Rational(P, q)*S.Pi)
-                                else:
-                                    return None
+                try:
+                    result = cst_table_some[q]
+                except KeyError:
+                    if abs(P) > q // 2:
+                        P = q - P
 
-                        if Q % 4 in (1, 2):
-                            return -result
+                    try:
+                        result = cst_table_more[(P, q)]
+                    except KeyError:
+                        if P != p:
+                            result = cls(C.Rational(P, q)*S.Pi)
                         else:
-                            return result
+                            return None
 
-                if arg.is_Mul and arg.args[0].is_negative:
-                    return cls(-arg)
-                if arg.is_Add:
-                    x, m = arg.as_independent(S.Pi)
-                    if m in [S.Pi/2, S.Pi]:
-                        return cos(m)*cos(x)-sin(m)*sin(x)
-                    # normalize cos(-x-y) to cos(x+y)
-                    if arg.args[0].is_Mul:
-                        if arg.args[0].args[0].is_negative:
-                            # e.g. arg = -x - y
-                            if (-arg).args[0].is_Mul:
-                                if (-arg).args[0].args[0].is_negative:
-                                    # This is to prevent infinite recursion in
-                                    # the case cos(-x+y), for which
-                                    # -arg = -y + x. See also #838 for the
-                                    # root of the problem here.
-                                    return
-                            # convert cos(-x-y) to cos(x+y)
-                            return cls(-arg)
-                    if arg.args[0].is_negative:
-                        if (-arg).args[0].is_negative:
-                            # This is to avoid infinite recursion in the case
-                            # sin(-x-1)
-                            return
-                        return cls(-arg)
+                if Q % 4 in (1, 2):
+                    return -result
+                else:
+                    return result
 
-            if isinstance(arg, acos):
-                return arg.args[0]
+        if arg.is_Add:
+            x, m = arg.as_independent(S.Pi)
+            if m in [-S.Pi, -S.Pi/2, S.Pi/2, S.Pi]:
+                return cos(m)*cos(x)-sin(m)*sin(x)
 
-            if isinstance(arg, atan):
-                x = arg.args[0]
-                return 1 / sqrt(1 + x**2)
+        if arg.func is acos:
+            return arg.args[0]
 
-            if isinstance(arg, asin):
-                x = arg.args[0]
-                return sqrt(1 - x ** 2)
+        if arg.func is atan:
+            x = arg.args[0]
+            return 1 / sqrt(1 + x**2)
 
-            if isinstance(arg, acot):
-                x = arg.args[0]
-                return 1 / sqrt(1 + 1 / x**2)
+        if arg.func is asin:
+            x = arg.args[0]
+            return sqrt(1 - x ** 2)
+
+        if arg.func is acot:
+            x = arg.args[0]
+            return 1 / sqrt(1 + 1 / x**2)
 
 
     @staticmethod
@@ -427,7 +364,7 @@ class cos(Function):
         return (1-tan_half)/(1+tan_half)
 
     def _eval_rewrite_as_cot(self, arg):
-        cot_half = S.Cot(S.Half*arg)**2
+        cot_half = cot(S.Half*arg)**2
         return (cot_half-1)/(cot_half+1)
 
     def _eval_conjugate(self):
@@ -498,8 +435,8 @@ class tan(Function):
 
     Examples
     ========
-        >>> from sympy import *
-        >>> x = Symbol('x')
+        >>> from sympy import tan
+        >>> from sympy.abc import x
         >>> tan(x**2).diff(x)
         2*x*(1 + tan(x**2)**2)
         >>> tan(1).diff(x)
@@ -527,69 +464,54 @@ class tan(Function):
         return atan
 
     @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
-
-    @classmethod
     def eval(cls, arg):
         if arg.is_Number:
             if arg is S.NaN:
                 return S.NaN
             elif arg is S.Zero:
                 return S.Zero
-            elif arg.is_negative:
-                return -cls(-arg)
-        else:
-            i_coeff = arg.as_coefficient(S.ImaginaryUnit)
 
-            if i_coeff is not None:
-                return S.ImaginaryUnit * C.tanh(i_coeff)
-            else:
-                pi_coeff = arg.as_coefficient(S.Pi)
+        if arg.could_extract_minus_sign():
+            return -cls(-arg)
 
-                if pi_coeff is not None:
-                    if pi_coeff.is_integer:
-                        return S.Zero
-                    elif pi_coeff.is_Rational:
-                        cst_table = {
-                           #2 : S.ComplexInfinity,
-                            3 : sqrt(3),
-                            4 : S.One,
-                            6 : 1 / sqrt(3),
-                        }
+        i_coeff = arg.as_coefficient(S.ImaginaryUnit)
+        if i_coeff is not None:
+            return S.ImaginaryUnit * C.tanh(i_coeff)
 
-                        try:
-                            result = cst_table[pi_coeff.q]
+        pi_coeff = arg.as_coefficient(S.Pi)
+        if pi_coeff is not None:
+            if pi_coeff.is_integer:
+                return S.Zero
+            elif pi_coeff.is_Rational:
+                cst_table = {
+                   #2 : S.ComplexInfinity,
+                    3 : sqrt(3),
+                    4 : S.One,
+                    6 : 1 / sqrt(3),
+                }
 
-                            if (2*pi_coeff.p // pi_coeff.q) % 4 in (1, 3):
-                                return -result
-                            else:
-                                return result
-                        except KeyError:
-                            pass
+                try:
+                    result = cst_table[pi_coeff.q]
 
-                coeff, terms = arg.as_coeff_terms()
+                    if (2*pi_coeff.p // pi_coeff.q) % 4 in (1, 3):
+                        return -result
+                    else:
+                        return result
+                except KeyError:
+                    pass
 
-                if coeff.is_negative:
-                    return -cls(-arg)
-
-        if isinstance(arg, atan):
+        if arg.func is atan:
             return arg.args[0]
 
-        if isinstance(arg, asin):
+        if arg.func is asin:
             x = arg.args[0]
             return x / sqrt(1 - x**2)
 
-        if isinstance(arg, acos):
+        if arg.func is acos:
             x = arg.args[0]
             return sqrt(1 - x**2) / x
 
-        if isinstance(arg, acot):
+        if arg.func is acot:
             x = arg.args[0]
             return 1 / x
 
@@ -635,14 +557,14 @@ class tan(Function):
         neg_exp, pos_exp = exp(-arg*I), exp(arg*I)
         return I*(neg_exp-pos_exp)/(neg_exp+pos_exp)
 
-    def _eval_rewrite_as_sin(self, arg):
+    def _eval_rewrite_as_sin(self, x):
         return 2*sin(x)**2/sin(2*x)
 
-    def _eval_rewrite_as_cos(self, arg):
+    def _eval_rewrite_as_cos(self, x):
         return -cos(x + S.Pi/2)/cos(x)
 
     def _eval_rewrite_as_cot(self, arg):
-        return 1/S.Cot(arg)
+        return 1/cot(arg)
 
     def _eval_as_leading_term(self, x):
         arg = self.args[0].as_leading_term(x)
@@ -676,77 +598,57 @@ class cot(Function):
 
     def fdiff(self, argindex=1):
         if argindex == 1:
-            return -S.One - S.Cot**2
+            return -S.One - self**2
         else:
             raise ArgumentIndexError(self, argindex)
 
     def inverse(self, argindex=1):
-        return S.ACot
-
-    @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
+        return acot
 
     @classmethod
     def eval(cls, arg):
         if arg.is_Number:
             if arg is S.NaN:
                 return S.NaN
-            #elif arg is S.Zero:
-            #    return S.ComplexInfinity
-            elif arg.is_negative:
-                return -cls(-arg)
-        else:
-            i_coeff = arg.as_coefficient(S.ImaginaryUnit)
+        if arg.could_extract_minus_sign():
+            return -cls(-arg)
 
-            if i_coeff is not None:
-                return -S.ImaginaryUnit * C.coth(i_coeff)
-            else:
-                pi_coeff = arg.as_coefficient(S.Pi)
+        i_coeff = arg.as_coefficient(S.ImaginaryUnit)
+        if i_coeff is not None:
+            return -S.ImaginaryUnit * C.coth(i_coeff)
 
-                if pi_coeff is not None:
-                    #if pi_coeff.is_integer:
-                    #    return S.ComplexInfinity
-                    if pi_coeff.is_Rational:
-                        cst_table = {
-                            2 : S.Zero,
-                            3 : 1 / sqrt(3),
-                            4 : S.One,
-                            6 : sqrt(3)
-                        }
+        pi_coeff = arg.as_coefficient(S.Pi)
+        if pi_coeff is not None:
+            if pi_coeff.is_Rational:
+                cst_table = {
+                    2 : S.Zero,
+                    3 : 1 / sqrt(3),
+                    4 : S.One,
+                    6 : sqrt(3)
+                }
 
-                        try:
-                            result = cst_table[pi_coeff.q]
+                try:
+                    result = cst_table[pi_coeff.q]
 
-                            if (2*pi_coeff.p // pi_coeff.q) % 4 in (1, 3):
-                                return -result
-                            else:
-                                return result
-                        except KeyError:
-                            pass
+                    if (2*pi_coeff.p // pi_coeff.q) % 4 in (1, 3):
+                        return -result
+                    else:
+                        return result
+                except KeyError:
+                    pass
 
-                coeff, terms = arg.as_coeff_terms()
-
-                if coeff.is_negative:
-                    return -cls(-arg)
-
-        if isinstance(arg, acot):
+        if arg.func is acot:
             return arg.args[0]
 
-        if isinstance(arg, atan):
+        if arg.func is atan:
             x = arg.args[0]
             return 1 / x
 
-        if isinstance(arg, asin):
+        if arg.func is asin:
             x = arg.args[0]
             return sqrt(1 - x**2) / x
 
-        if isinstance(arg, acos):
+        if arg.func is acos:
             x = arg.args[0]
             return x / sqrt(1 - x**2)
 
@@ -761,7 +663,7 @@ class cot(Function):
         else:
             x = sympify(x)
 
-            B = S.Bernoulli(n+1)
+            B = C.bernoulli(n+1)
             F = C.Factorial(n+1)
 
             return (-1)**((n+1)//2) * 2**(n+1) * B/F * x**n
@@ -790,10 +692,10 @@ class cot(Function):
         neg_exp, pos_exp = exp(-arg*I), exp(arg*I)
         return I*(pos_exp+neg_exp)/(pos_exp-neg_exp)
 
-    def _eval_rewrite_as_sin(self, arg):
+    def _eval_rewrite_as_sin(self, x):
         return 2*sin(2*x)/sin(x)**2
 
-    def _eval_rewrite_as_cos(self, arg):
+    def _eval_rewrite_as_cos(self, x):
         return -cos(x)/cos(x + S.Pi/2)
 
     def _eval_rewrite_as_tan(self, arg):
@@ -834,15 +736,6 @@ class asin(Function):
             raise ArgumentIndexError(self, argindex)
 
     @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
-
-    @classmethod
     def eval(cls, arg):
         if arg.is_Number:
             if arg is S.NaN:
@@ -858,6 +751,9 @@ class asin(Function):
             elif arg is S.NegativeOne:
                 return -S.Pi / 2
 
+        if arg.could_extract_minus_sign():
+            return -cls(-arg)
+
         if arg.is_number:
             cst_table = {
                 S.Half     : 6,
@@ -872,18 +768,10 @@ class asin(Function):
 
             if arg in cst_table:
                 return S.Pi / cst_table[arg]
-            elif arg.is_negative:
-                return -cls(-arg)
-        else:
-            i_coeff = arg.as_coefficient(S.ImaginaryUnit)
 
-            if i_coeff is not None:
-                return S.ImaginaryUnit * C.asinh(i_coeff)
-            else:
-                coeff, terms = arg.as_coeff_terms()
-
-                if coeff.is_negative:
-                    return -cls(-arg)
+        i_coeff = arg.as_coefficient(S.ImaginaryUnit)
+        if i_coeff is not None:
+            return S.ImaginaryUnit * C.asinh(i_coeff)
 
 
     @staticmethod
@@ -893,16 +781,13 @@ class asin(Function):
             return S.Zero
         else:
             x = sympify(x)
-
-            if len(previous_terms) > 2:
+            if len(previous_terms) >= 2 and n > 2:
                 p = previous_terms[-2]
-                return p * (n-2)**2/(k*(k-1)) * x**2
+                return p * (n-2)**2/(n*(n-1)) * x**2
             else:
                 k = (n - 1) // 2
-
                 R = C.RisingFactorial(S.Half, k)
                 F = C.Factorial(k)
-
                 return R / F * x**n / n
 
     def _eval_as_leading_term(self, x):
@@ -934,15 +819,6 @@ class acos(Function):
             return -(1 - self.args[0]**2)**(-S.Half)
         else:
             raise ArgumentIndexError(self, argindex)
-
-    @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
 
     @classmethod
     def eval(cls, arg):
@@ -985,16 +861,13 @@ class acos(Function):
             return S.Zero
         else:
             x = sympify(x)
-
-            if len(previous_terms) > 2:
+            if len(previous_terms) >= 2 and n > 2:
                 p = previous_terms[-2]
-                return p * (n-2)**2/(k*(k-1)) * x**2
+                return p * (n-2)**2/(n*(n-1)) * x**2
             else:
                 k = (n - 1) // 2
-
                 R = C.RisingFactorial(S.Half, k)
                 F = C.Factorial(k)
-
                 return -R / F * x**n / n
 
     def _eval_as_leading_term(self, x):
@@ -1028,15 +901,6 @@ class atan(Function):
             raise ArgumentIndexError(self, argindex)
 
     @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
-
-    @classmethod
     def eval(cls, arg):
         if arg.is_Number:
             if arg is S.NaN:
@@ -1051,6 +915,8 @@ class atan(Function):
                 return S.Pi / 4
             elif arg is S.NegativeOne:
                 return -S.Pi / 4
+        if arg.could_extract_minus_sign():
+            return -cls(-arg)
 
         if arg.is_number:
             cst_table = {
@@ -1064,19 +930,11 @@ class atan(Function):
 
             if arg in cst_table:
                 return S.Pi / cst_table[arg]
-            elif arg.is_negative:
-                return -cls(-arg)
 
-        else:
-            i_coeff = arg.as_coefficient(S.ImaginaryUnit)
+        i_coeff = arg.as_coefficient(S.ImaginaryUnit)
+        if i_coeff is not None:
+            return S.ImaginaryUnit * C.atanh(i_coeff)
 
-            if i_coeff is not None:
-                return S.ImaginaryUnit * C.atanh(i_coeff)
-            else:
-                coeff, terms = arg.as_coeff_terms()
-
-                if coeff.is_negative:
-                    return -cls(-arg)
 
 
     @staticmethod
@@ -1119,11 +977,6 @@ class acot(Function):
             raise ArgumentIndexError(self, argindex)
 
     @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
-
-    @classmethod
     def eval(cls, arg):
         if arg.is_Number:
             if arg is S.NaN:
@@ -1139,6 +992,9 @@ class acot(Function):
             elif arg is S.NegativeOne:
                 return -S.Pi / 4
 
+        if arg.could_extract_minus_sign():
+            return -cls(-arg)
+
         if arg.is_number:
             cst_table = {
                 sqrt(3)/3  : 3,
@@ -1151,20 +1007,10 @@ class acot(Function):
 
             if arg in cst_table:
                 return S.Pi / cst_table[arg]
-            elif arg.is_negative:
-                return -cls(-arg)
 
-        else:
-            i_coeff = arg.as_coefficient(S.ImaginaryUnit)
-
-            if i_coeff is not None:
-                return -S.ImaginaryUnit * C.acoth(i_coeff)
-            else:
-                coeff, terms = arg.as_coeff_terms()
-
-                if coeff.is_negative:
-                    return -cls(-arg)
-
+        i_coeff = arg.as_coefficient(S.ImaginaryUnit)
+        if i_coeff is not None:
+            return -S.ImaginaryUnit * C.acoth(i_coeff)
 
     @staticmethod
     @cacheit
@@ -1202,11 +1048,6 @@ class atan2(Function):
     nargs = 2
 
     @classmethod
-    @deprecated
-    def canonize(cls, y, x):
-        return cls.eval(y, x)
-
-    @classmethod
     def eval(cls, y, x):
         sign_y = C.sign(y)
 
@@ -1232,3 +1073,6 @@ class atan2(Function):
     def _eval_is_real(self):
         return self.args[0].is_real and self.args[1].is_real
 
+    def _sage_(self):
+        import sage.all as sage
+        return sage.atan2(self.args[0]._sage_(), self.args[1]._sage_())

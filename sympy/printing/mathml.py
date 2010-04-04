@@ -2,7 +2,7 @@
 A MathML printer.
 """
 
-from sympy import Basic, sympify, C, S
+from sympy import Basic, sympify, S
 from sympy.simplify import fraction
 from printer import Printer
 from conventions import split_super_sub
@@ -16,15 +16,19 @@ class MathMLPrinter(Printer):
     References: http://www.w3.org/TR/MathML2/
     """
     printmethod = "_mathml_"
+    _default_settings = {
+        "order": None,
+        "encoding": "utf-8"
+    }
 
-    def __init__(self, *args, **kwargs):
-        Printer.__init__(self, *args, **kwargs)
+    def __init__(self, settings=None):
+        Printer.__init__(self, settings)
         from xml.dom.minidom import Document
         self.dom = Document()
 
-    def doprint(self, e):
-        mathML = Printer.doprint(self,expr)
-        return mathML.toxml()
+    def doprint(self, expr):
+        mathML = Printer._print(self, expr)
+        return mathML.toxml(encoding=self._settings['encoding'])
 
     def mathml_tag(self, e):
         """Returns the MathML tag for an expression."""
@@ -170,7 +174,7 @@ class MathMLPrinter(Printer):
         return self.dom.createElement('eulergamma')
 
     def _print_GoldenRatio(self,e):
-        """We use unicode #x3c6 for greek letter phi as defined here
+        """We use unicode #x3c6 for Greek letter phi as defined here
         http://www.w3.org/Math/characters/"""
         x = self.dom.createElement('cn')
         x.appendChild(self.dom.createTextNode(u"\u03c6"))
@@ -333,18 +337,17 @@ class MathMLPrinter(Printer):
         dom_element.appendChild(self.dom.createTextNode(str(p)))
         return dom_element
 
-def mathml(expr):
+def mathml(expr, **settings):
     """Returns the MathML representation of expr"""
-    s = MathMLPrinter()
-    return s._print(sympify(expr)).toxml(encoding="utf-8")
+    return MathMLPrinter(settings).doprint(expr)
 
-def print_mathml(expr):
+def print_mathml(expr, **settings):
     """
-    Print's a pretty representation of the MathML code for expr
+    Prints a pretty representation of the MathML code for expr
 
-    >>> from sympy import *
+    >>> ##
     >>> from sympy.printing.mathml import print_mathml
-    >>> x = Symbol('x')
+    >>> from sympy.abc import x
     >>> print_mathml(x+1) #doctest: +NORMALIZE_WHITESPACE
     <apply>
         <plus/>
@@ -357,5 +360,5 @@ def print_mathml(expr):
     </apply>
 
     """
-    s = MathMLPrinter()
+    s = MathMLPrinter(settings)
     print s._print(sympify(expr)).toprettyxml(encoding="utf-8")

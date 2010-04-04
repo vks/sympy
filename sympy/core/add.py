@@ -99,7 +99,7 @@ class Add(AssocOp):
             # c*s
             else:
                 if s.is_Mul:
-                    # Mul, already keeps it's arguments in perfect order.
+                    # Mul, already keeps its arguments in perfect order.
                     # so we can simply put c in slot0 and go the fast way.
                     cs = s._new_rawargs(*((c,) + s.args))
                     newseq.append(cs)
@@ -180,9 +180,9 @@ class Add(AssocOp):
         terms = [t.nseries(x, x0, n) for t in self.args]
         return Add(*terms)
 
-    def _matches_simple(pattern, expr, repl_dict):
+    def _matches_simple(self, expr, repl_dict):
         # handle (w+3).matches('x+5') -> {w: x+2}
-        coeff, factors = pattern.as_coeff_factors()
+        coeff, factors = self.as_coeff_factors()
         if len(factors)==1:
             return factors[0].matches(expr - coeff, repl_dict)
         return
@@ -318,10 +318,11 @@ class Add(AssocOp):
 
         Examples:
 
+        >>> from sympy.abc import x
         >>> (x+1+1/x**5).extract_leading_order(x)
-        ((1/x**5, O(1/x**5)),)
+        ((x**(-5), O(x**(-5))),)
         >>> (1+x).extract_leading_order(x)
-        ((1, O(1, x)),)
+        ((1, O(1)),)
         >>> (x+x**2).extract_leading_order(x)
         ((x, O(x)),)
 
@@ -370,6 +371,9 @@ class Add(AssocOp):
         #         n          n          n
         # (-3 + y)   ->  (-1)  * (3 - y)
         # similar to Mul.flatten()
+        if Basic.keep_sign:
+            return None
+
         c, t = self.as_coeff_terms()
         if c.is_negative and not other.is_integer:
             if c is not S.NegativeOne:
@@ -486,5 +490,10 @@ class Add(AssocOp):
             s += x._sage_()
         return s
 
+    def as_Add(self):
+        """Returns `self` as it was `Add` instance. """
+        return list(self.args)
+
 from mul import Mul
 from function import FunctionClass
+

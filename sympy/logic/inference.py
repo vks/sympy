@@ -1,19 +1,20 @@
 """Inference in propositional logic"""
-from sympy.logic.boolalg import And, Or, Not, Implies, Equivalent, disjuncts, \
+from sympy.logic.boolalg import And, Or, Not, Implies, Equivalent, \
     conjuncts, to_cnf
 from sympy.core import Symbol, sympify
 
 def literal_symbol(literal):
     """The symbol in this literal (without the negation).
     >>> from sympy import Symbol
-    >>> A = Symbol('A')
+    >>> from sympy.abc import A
+    >>> from sympy.logic.inference import literal_symbol
     >>> literal_symbol(A)
     A
     >>> literal_symbol(~A)
     A
 
     """
-    if isinstance(literal, Not):
+    if literal.func is Not:
         return literal.args[0]
     else:
         return literal
@@ -23,8 +24,8 @@ def satisfiable(expr, algorithm="dpll"):
     Returns a model when it succeeds
 
     Examples
-    >>> from sympy import symbols
-    >>> A, B = symbols('AB')
+    >>> from sympy.abc import A, B
+    >>> from sympy.logic.inference import satisfiable
     >>> satisfiable(A & ~B)
     {A: True, B: False}
     >>> satisfiable(A & ~A)
@@ -46,8 +47,8 @@ def pl_true(expr, model={}):
     The model is implemented as a dict containing the pair symbol, boolean value.
 
     Examples:
-    >>> from sympy import symbols
-    >>> A, B = symbols('AB')
+    >>> from sympy.abc import A, B
+    >>> from sympy.logic.inference import pl_true
     >>> pl_true( A & B, {A: True, B : True})
     True
 
@@ -61,18 +62,18 @@ def pl_true(expr, model={}):
         return model.get(expr)
 
     args = expr.args
-    if type(expr) is Not:
+    if expr.func is Not:
         p = pl_true(args[0], model)
         if p is None: return None
         else: return not p
-    elif type(expr) is Or:
+    elif expr.func is Or:
         result = False
         for arg in args:
             p = pl_true(arg, model)
             if p == True: return True
             if p == None: result = None
         return result
-    elif isinstance(expr, And):
+    elif expr.func is And:
         result = True
         for arg in args:
             p = pl_true(arg, model)
@@ -80,11 +81,11 @@ def pl_true(expr, model={}):
             if p == None: result = None
         return result
 
-    elif isinstance(expr, Implies):
+    elif expr.func is Implies:
         p, q = args
         return pl_true(Or(Not(p), q), model)
 
-    elif isinstance(expr, Equivalent):
+    elif expr.func is Equivalent:
         p, q = args
         pt = pl_true(p, model)
         if pt == None:

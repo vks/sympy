@@ -62,7 +62,8 @@ MODULES = {
     "numpy":(NUMPY, NUMPY_TRANSLATIONS, ("from numpy import *",)),
     "sympy":(SYMPY, {}, ("from sympy.functions import *",
                          "from sympy.matrices import Matrix",
-                         "from sympy import Integral"))
+                         "from sympy import Integral",
+                         "from sympy.utilities.iterables import iff"))
 }
 
 def _import(module, reload="False"):
@@ -101,8 +102,9 @@ def lambdify(args, expr, modules=None):
     Returns a lambda function for fast calculation of numerical values.
 
     Usage:
-    >>> from sympy import symbols, sqrt, sin
-    >>> x,y,z = symbols('xyz')
+    >>> from sympy import sqrt, sin
+    >>> from sympy.utilities import lambdify
+    >>> from sympy.abc import x, y, z
     >>> f = lambdify(x, x**2)
     >>> f(2)
     4
@@ -119,7 +121,7 @@ def lambdify(args, expr, modules=None):
     If not specified differently by the user, Sympy functions are replaced as
     far as possible by either python-math, numpy (if available) or mpmath
     functions - exactly in this order.
-    To change this behaviour, the "modules" argument can be used.
+    To change this behavior, the "modules" argument can be used.
     It accepts:
      - the strings "math", "mpmath", "numpy", "sympy"
      - any modules (e.g. math)
@@ -140,7 +142,7 @@ def lambdify(args, expr, modules=None):
         >> import numpy
         >> f = lambdify((x,y), tan(x*y), numpy)
 
-        Attention: There are naming diferences between numpy and sympy. So if
+        Attention: There are naming differences between numpy and sympy. So if
                    you simply take the numpy module, e.g. sympy.atan will not be
                    translated to numpy.arctan. Use the modified module instead
                    by passing the string "numpy".
@@ -182,7 +184,7 @@ def lambdify(args, expr, modules=None):
 
 def _get_namespace(m):
     """
-    This is used by _lambdify to parse it's arguments.
+    This is used by _lambdify to parse its arguments.
     """
     if isinstance(m, str):
         _import(m)
@@ -198,8 +200,8 @@ def lambdastr(args, expr):
     """
     Returns a string that can be evaluated to a lambda function.
 
-    >>> from sympy import symbols
-    >>> x,y,z = symbols('xyz')
+    >>> from sympy.abc import x, y, z
+    >>> from sympy.utilities.lambdify import lambdastr
     >>> lambdastr(x, x**2)
     'lambda x: (x**2)'
     >>> lambdastr((x,y,z), [z,y,x])

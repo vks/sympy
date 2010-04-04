@@ -1,6 +1,5 @@
-from sympy.core.basic import Basic, S
+from sympy.core.basic import S
 from sympy.core.symbol import Symbol
-from sympy.core.add import Add
 from sympy.core.mul import Mul
 from sympy.core import sympify
 
@@ -15,7 +14,7 @@ def normal(f, g, n=None):
                        g(n)       B(n)  C(n)
 
        where Z is arbitrary constant and A, B, C are monic
-       polynomials in 'n' with follwing properties:
+       polynomials in 'n' with following properties:
 
            (1) gcd(A(n), B(n+h)) = 1 for all 'h' in N
            (2) gcd(B(n), C(n+1)) = 1
@@ -26,10 +25,10 @@ def normal(f, g, n=None):
        equations solving. It can be also used to decide if two
        hypergeometric are similar or not.
 
-       This procedure will return return triple containig elements
+       This procedure will return a tuple containing elements
        of this factorization in the form (Z*A, B, C). For example:
 
-       >>> from sympy import Symbol
+       >>> from sympy import Symbol, normal
        >>> n = Symbol('n', integer=True)
 
        >>> normal(4*n+5, 2*(4*n+1)*(2*n+3), n)
@@ -38,11 +37,11 @@ def normal(f, g, n=None):
     """
     f, g = map(sympify, (f, g))
 
-    p = f.as_poly(n)
-    q = g.as_poly(n)
+    p = f.as_poly(n, field=True)
+    q = g.as_poly(n, field=True)
 
-    a, p = p.LC, p.as_monic()
-    b, q = q.LC, q.as_monic()
+    a, p = p.LC(), p.monic()
+    b, q = q.LC(), q.monic()
 
     A = p.as_basic()
     B = q.as_basic()
@@ -53,7 +52,7 @@ def normal(f, g, n=None):
 
     res = resultant(A, B.subs(n, n+h), n)
 
-    nni_roots = roots(res, h, domain='Z',
+    nni_roots = roots(res, h, filter='Z',
         predicate=lambda r: r >= 0).keys()
 
     if not nni_roots:
@@ -98,3 +97,4 @@ def gosper(term, k, a, n):
             return simplify(Z.subs(k, n+1) - Z.subs(k, a))
         else:
             return None
+

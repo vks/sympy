@@ -16,6 +16,7 @@ def test_mod():
     x = Rational(1, 2)
     y = Rational(3, 4)
     z = Rational(5, 18043)
+
     assert x % x == 0
     assert x % y == 1/S(2)
     assert x % z == 3/S(36086)
@@ -25,11 +26,18 @@ def test_mod():
     assert z % x == 5/S(18043)
     assert z % y == 5/S(18043)
     assert z % z == 0
+
     a = Real('2.6')
+
     assert round(a % Real('0.2'), 15) == 0.2
     assert round(a % 2, 15) == 0.6
     assert round(a % 0.5, 15) == 0.1
     assert Rational(3,4) % Real(1.1) == 0.75
+
+    a = Integer(7)
+    b = Integer(4)
+
+    assert type(a % b) == Integer
 
 def test_igcd():
     assert igcd(0, 0) == 0
@@ -480,6 +488,39 @@ def test_IntegerInteger():
     b = Integer(a)
 
     assert a == b
+
+def test_Integer_methods():
+    assert Integer(100).half_gcdex(2004) == \
+        (Integer(-20), Integer(4))
+    assert Integer(100).half_gcdex(Integer(2004)) == \
+        (Integer(-20), Integer(4))
+    assert Integer(100).gcdex(2004) == \
+        (Integer(-20), Integer(1), Integer(4))
+    assert Integer(100).gcdex(Integer(2004)) == \
+        (Integer(-20), Integer(1), Integer(4))
+
+    raises(ValueError, "Integer(3).half_gcdex(Rational(1,2))")
+    raises(ValueError, "Integer(3).gcdex(Rational(1,2))")
+
+    assert Integer(3).invert(7) == Integer(5)
+    assert Integer(3).invert(Integer(7)) == Integer(5)
+
+    raises(ValueError, "Integer(3).invert(Rational(1,2))")
+
+    assert Integer(4).cofactors(2) == \
+        (Integer(2), Integer(2), Integer(1))
+    assert Integer(4).cofactors(Integer(2)) == \
+        (Integer(2), Integer(2), Integer(1))
+
+    raises(ValueError, "Integer(4).cofactors(Rational(1,2))")
+
+    assert Integer(4).gcd(2) == Integer(2)
+    assert Integer(4).lcm(2) == Integer(4)
+    assert Integer(4).gcd(Integer(2)) == Integer(2)
+    assert Integer(4).lcm(Integer(2)) == Integer(4)
+
+    raises(ValueError, "Integer(4).gcd(Rational(1,2))")
+    raises(ValueError, "Integer(4).lcm(Rational(1,2))")
 
 def test_issue1512():
     assert abs(pi._evalf(50) - 3.14159265358979) < 1e-10

@@ -1,4 +1,3 @@
-
 from basic import Basic, S, C
 from sympify import _sympify
 from cache import cacheit
@@ -49,7 +48,7 @@ class AssocOp(Basic):
            This is handy when we want to optimize things, e.g.
 
            >>> from sympy import Mul, symbols
-           >>> x,y = symbols('xy')
+           >>> from sympy.abc import x, y
            >>> e = Mul(3,x,y)
            >>> e.args
            (3, x, y)
@@ -90,7 +89,7 @@ class AssocOp(Basic):
 
     _eval_subs = Basic._seq_subs
 
-    def _matches_commutative(pattern, expr, repl_dict={}, evaluate=False):
+    def _matches_commutative(self, expr, repl_dict={}, evaluate=False):
         """
         Matches Add/Mul "pattern" to an expression "expr".
 
@@ -144,14 +143,10 @@ class AssocOp(Basic):
         """
         # apply repl_dict to pattern to eliminate fixed wild parts
         if evaluate:
-            pat = pattern
-            for old,new in repl_dict.items():
-                pat = pat.subs(old, new)
-            if pat != pattern:
-                return pat.matches(expr, repl_dict)
+            return self.subs(repl_dict.items()).matches(expr, repl_dict)
 
         # handle simple patterns
-        d = pattern._matches_simple(expr, repl_dict)
+        d = self._matches_simple(expr, repl_dict)
         if d is not None:
             return d
 
@@ -159,7 +154,7 @@ class AssocOp(Basic):
         wild_part = []
         exact_part = []
         from function import WildFunction
-        for p in pattern.args:
+        for p in self.args:
             if p.atoms(Wild, WildFunction):
                 # not all Wild should stay Wilds, for example:
                 # (w2+w3).matches(w1) -> (w1+w3).matches(w1) -> w3.matches(0)
@@ -170,12 +165,12 @@ class AssocOp(Basic):
             exact_part.append(p)
 
         if exact_part:
-            newpattern = pattern.__class__(*wild_part)
-            newexpr = pattern.__class__._combine_inverse(expr, pattern.__class__(*exact_part))
+            newpattern = self.__class__(*wild_part)
+            newexpr = self.__class__._combine_inverse(expr, self.__class__(*exact_part))
             return newpattern.matches(newexpr, repl_dict)
 
         # now to real work ;)
-        if isinstance(expr, pattern.__class__):
+        if isinstance(expr, self.__class__):
             expr_list = list(expr.args)
         else:
             expr_list = [expr]
@@ -187,7 +182,7 @@ class AssocOp(Basic):
                 w = tmp.pop()
                 d1 = w.matches(last_op, repl_dict)
                 if d1 is not None:
-                    d2 = pattern.matches(expr, d1, evaluate=True)
+                    d2 = self.subs(d1.items()).matches(expr, d1)
                     if d2 is not None:
                         return d2
 
@@ -204,3 +199,76 @@ class AssocOp(Basic):
 
     _eval_evalf = Basic._seq_eval_evalf
 
+class ShortCircuit(Exception):
+    pass
+
+class LatticeOp(AssocOp):
+    """
+    Join/meet operations of an algebraic lattice[1].
+
+    These binary operations are associative (op(op(a, b), c) = op(a, op(b, c))),
+    commutative (op(a, b) = op(b, a)) and idempotent (op(a, a) = op(a) = a).
+    Common examples are AND, OR, Union, Intersection, max or min. They have an
+    identity element (op(identity, a) = a) and an absorbing element
+    conventionally called zero (op(zero, a) = zero).
+
+    This is an abstract base class, concrete derived classes must declare
+    attributes zero and identity. All defining properties are then respected.
+
+    >>> from sympy import Integer
+    >>> from sympy.core.operations import LatticeOp
+    >>> class my_join(LatticeOp):
+    ...     zero = Integer(0)
+    ...     identity = Integer(1)
+    >>> my_join(2, 3) == my_join(3, 2)
+    True
+    >>> my_join(2, my_join(3, 4)) == my_join(2, 3, 4)
+    True
+    >>> my_join(0, 1, 4, 2, 3, 4)
+    0
+    >>> my_join(1, 2)
+    2
+
+    References:
+
+    [1] - http://en.wikipedia.org/wiki/Lattice_(order)
+    """
+
+    is_commutative = True
+
+    def __new__(cls, *args, **assumptions):
+        args = (_sympify(arg) for arg in args)
+        try:
+            _args = frozenset(cls._new_args_filter(args))
+        except ShortCircuit:
+            return cls.zero
+        if not _args:
+            return cls.identity
+        elif len(_args) == 1:
+            return set(_args).pop()
+        else:
+            obj = Basic.__new__(cls, _args, **assumptions)
+            obj._argset = _args
+            return obj
+
+    @classmethod
+    def _new_args_filter(cls, arg_sequence):
+        """Generator filtering args"""
+        for arg in arg_sequence:
+            if arg == cls.zero:
+                raise ShortCircuit(arg)
+            elif arg == cls.identity:
+                continue
+            elif arg.func == cls:
+                for x in arg.iter_basic_args():
+                    yield x
+            else:
+                yield arg
+
+    @property
+    def args(self):
+        return tuple(self._argset)
+
+    @staticmethod
+    def _compare_pretty(a, b):
+        return cmp(str(a), str(b))

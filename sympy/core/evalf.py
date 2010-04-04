@@ -3,21 +3,21 @@ Adaptive numerical evaluation of SymPy expressions, using mpmath
 for mathematical functions.
 """
 
-from sympy.mpmath.libmpf import (from_int, from_rational, fzero, normalize,
-        bitcount, round_nearest, to_str, fone, fnone, fhalf, from_float,
-        to_float, fnone, to_int, mpf_lt, mpf_sqrt, mpf_cmp, mpf_abs,
-        mpf_pow_int, mpf_shift, mpf_add, mpf_mul, mpf_neg)
+from sympy.mpmath.libmp import (from_int, from_rational, fzero, normalize,
+        bitcount, round_nearest, to_str, fone, fnone, fhalf, to_int, mpf_lt,
+        mpf_sqrt, mpf_cmp, mpf_abs, mpf_pow_int, mpf_shift, mpf_add, mpf_mul,
+        mpf_neg)
 
-import sympy.mpmath.libmpc as libmpc
-from sympy.mpmath.settings import dps_to_prec
+import sympy.mpmath.libmp as libmp
+from sympy.mpmath.libmp.libmpf import dps_to_prec
 from sympy.mpmath import mpf, mpc, quadts, quadosc, mp, make_mpf
-from sympy.mpmath.libelefun import mpf_pi, mpf_log, mpf_pow, mpf_sin, mpf_cos, \
-        mpf_atan, mpf_atan2, mpf_e, mpf_exp
-from sympy.mpmath.libmpf import MP_BASE, from_man_exp
-from sympy.mpmath.calculus import nsum
+from sympy.mpmath.libmp import (mpf_pi, mpf_log, mpf_pow, mpf_sin, mpf_cos,
+        mpf_atan, mpf_atan2, mpf_e, mpf_exp, from_man_exp)
+from sympy.mpmath.libmp.backend import MPZ
+from sympy.mpmath import nsum
 from sympy.mpmath import inf as mpmath_inf
 
-from sympy.mpmath.gammazeta import mpf_bernoulli
+from sympy.mpmath.libmp.gammazeta import mpf_bernoulli
 
 import math
 
@@ -46,7 +46,13 @@ class PrecisionExhausted(ArithmeticError):
 
 """
 An mpf value tuple is a tuple of integers (sign, man, exp, bc)
-representing a floating-point numbers.
+representing a floating-point number: (-1)**sign*man*2**exp where
+bc should correspond to the number of bits used to represent the
+mantissa (man) in binary notation, e.g. (0,5,1,3) represents 10::
+
+>>> from sympy.core.evalf import bitcount
+>>> n=(-1)**0 * 5 * 2**1; n, bitcount(5)
+(10, 3)
 
 A temporary result is a tuple (re, im, re_acc, im_acc) where
 re and im are nonzero mpf value tuples representing approximate
@@ -69,9 +75,19 @@ def fastlog(x):
     an exact power of 2) that would decrease the speed and is not
     necessary as this is only being used as an approximation for the
     number of bits in x. The correct return value could be written as
-    "x[2] + (x[3] if x[1]!=1 else 0)".
+    "x[2] + (x[3] if x[1] != 1 else 0)".
+        Since mpf tuples always have an odd mantissa, no check is done
+    to see if the mantissa is a multiple of 2 (in which case the
+    result would be too large by 1).
 
+    Example::
+
+    >>> from sympy import log
+    >>> from sympy.core.evalf import fastlog, bitcount
+    >>> n=(-1)**0*5*2**1; n, (log(n)/log(2)).evalf(), fastlog((0,5,1,bitcount(5)))
+    (10, 3.32192809488736, 4)
     """
+
     if not x or x == fzero:
         return MINUS_INF
     return x[2] + x[3]
@@ -107,7 +123,7 @@ def get_abs(expr, prec, options):
     if not re:
         re, re_acc, im, im_acc = im, im_acc, re, re_acc
     if im:
-        return libmpc.mpc_abs((re, im), prec), None, re_acc, None
+        return libmp.mpc_abs((re, im), prec), None, re_acc, None
     else:
         return mpf_abs(re), None, re_acc, None
 
@@ -177,7 +193,7 @@ def check_target(expr, result, prec):
     if a < prec:
         raise PrecisionExhausted("Failed to distinguish the expression: \n\n%s\n\n"
             "from zero. Try simplifying the input, using chop=True, or providing "
-            "a higher maxprec for evalf" % (expr))
+            "a higher maxn for evalf" % (expr))
 
 def get_integer_part(expr, no, options, return_ints=False):
     """
@@ -340,7 +356,7 @@ def evalf_mul(v, prec, options):
     prec = prec + len(args) + 5
     direction = 0
     # Empty product is 1
-    man, exp, bc = MP_BASE(1), 0, 1
+    man, exp, bc = MPZ(1), 0, 1
     direction = 0
     complex_factors = []
     # First, we multiply all pure real or pure imaginary numbers.
@@ -371,7 +387,7 @@ def evalf_mul(v, prec, options):
     if complex_factors:
         # make existing real scalar look like an imaginary and
         # multiply by the remaining complex numbers
-        re, im = v, (0, MP_BASE(0), 0, 0)
+        re, im = v, (0, MPZ(0), 0, 0)
         for wre, wim, wre_acc, wim_acc in complex_factors:
             # acc is the overall accuracy of the product; we aren't
             # computing exact accuracies of the product.
@@ -430,7 +446,7 @@ def evalf_pow(v, prec, options):
         if not re:
             return None, None, None, None
         # General complex number to arbitrary integer power
-        re, im = libmpc.mpc_pow_int((re, im), p, prec)
+        re, im = libmp.mpc_pow_int((re, im), p, prec)
         # Assumes full accuracy in input
         return finalize_complex(re, im, target_prec)
 
@@ -439,7 +455,7 @@ def evalf_pow(v, prec, options):
         xre, xim, xre_acc, yim_acc = evalf(base, prec+5, options)
         # General complex square root
         if xim:
-            re, im = libmpc.mpc_sqrt((xre or fzero, xim), prec)
+            re, im = libmp.mpc_sqrt((xre or fzero, xim), prec)
             return finalize_complex(re, im, prec)
         if not xre:
             return None, None, None, None
@@ -467,7 +483,7 @@ def evalf_pow(v, prec, options):
     # Pure exponential function; no need to evalf the base
     if base is S.Exp1:
         if yim:
-            re, im = libmpc.mpc_exp((yre or fzero, yim), prec)
+            re, im = libmp.mpc_exp((yre or fzero, yim), prec)
             return finalize_complex(re, im, target_prec)
         return mpf_exp(yre, target_prec), None, target_prec, None
 
@@ -478,16 +494,16 @@ def evalf_pow(v, prec, options):
 
     # (real ** complex) or (complex ** complex)
     if yim:
-        re, im = libmpc.mpc_pow((xre or fzero, xim or fzero), (yre or fzero, yim),
+        re, im = libmp.mpc_pow((xre or fzero, xim or fzero), (yre or fzero, yim),
             target_prec)
         return finalize_complex(re, im, target_prec)
     # complex ** real
     if xim:
-        re, im = libmpc.mpc_pow_mpf((xre or fzero, xim), yre, target_prec)
+        re, im = libmp.mpc_pow_mpf((xre or fzero, xim), yre, target_prec)
         return finalize_complex(re, im, target_prec)
     # negative ** real
     elif mpf_lt(xre, fzero):
-        re, im = libmpc.mpc_pow_mpf((xre, fzero), yre, target_prec)
+        re, im = libmp.mpc_pow_mpf((xre, fzero), yre, target_prec)
         return finalize_complex(re, im, target_prec)
     # positive ** real
     else:
@@ -768,18 +784,18 @@ def check_convergence(numer, denom, n):
     """
     npol = C.Poly(numer, n)
     dpol = C.Poly(denom, n)
-    p = npol.degree
-    q = dpol.degree
+    p = npol.degree()
+    q = dpol.degree()
     rate = q - p
     if rate:
         return rate, None, None
-    constant = dpol.lead_term[0] / npol.lead_term[0]
+    constant = dpol.LC() / npol.LC()
     if abs(constant) != 1:
         return rate, constant, None
-    if npol.degree == dpol.degree == 0:
+    if npol.degree() == dpol.degree() == 0:
         return rate, constant, 0
-    pc = list(npol.iter_all_terms())[1][0]
-    qc = list(dpol.iter_all_terms())[1][0]
+    pc = npol.all_coeffs()[1]
+    qc = dpol.all_coeffs()[1]
     return rate, constant, qc-pc
 
 def hypsum(expr, n, start, prec):
@@ -808,14 +824,14 @@ def hypsum(expr, n, start, prec):
 
     # Direct summation if geometric or faster
     if h > 0 or (h == 0 and abs(g) > 1):
-        one = MP_BASE(1) << prec
+        one = MPZ(1) << prec
         term = expr.subs(n, 0)
-        term = (MP_BASE(term.p) << prec) // term.q
+        term = (MPZ(term.p) << prec) // term.q
         s = term
         k = 1
         while abs(term) > 5:
-            term *= MP_BASE(func1(k-1))
-            term //= MP_BASE(func2(k-1))
+            term *= MPZ(func1(k-1))
+            term //= MPZ(func2(k-1))
             s += term
             k += 1
         return from_man_exp(s, -prec)
@@ -829,15 +845,15 @@ def hypsum(expr, n, start, prec):
         # Need to use at least quad precision because a lot of cancellation
         # might occur in the extrapolation process
         prec2 = 4*prec
-        one = MP_BASE(1) << prec2
+        one = MPZ(1) << prec2
         term = expr.subs(n, 0)
-        term = (MP_BASE(term.p) << prec2) // term.q
+        term = (MPZ(term.p) << prec2) // term.q
 
         def summand(k, _term=[term]):
             if k:
                 k = int(k)
-                _term[0] *= MP_BASE(func1(k-1))
-                _term[0] //= MP_BASE(func2(k-1))
+                _term[0] *= MPZ(func1(k-1))
+                _term[0] //= MPZ(func2(k-1))
             return make_mpf(from_man_exp(_term[0], -prec2))
 
         orig = mp.prec
@@ -973,7 +989,7 @@ def evalf(x, prec, options):
         check_target(x, r, prec)
     return r
 
-def Basic_evalf(x, n=15, **options):
+def Basic_evalf(x, n=15, subs=None, maxn=100, chop=False, strict=False, quad=None, verbose=False):
     """
     Evaluate the given formula to an accuracy of n digits.
     Optional keyword arguments:
@@ -982,8 +998,8 @@ def Basic_evalf(x, n=15, **options):
             Substitute numerical values for symbols, e.g.
             subs={x:3, y:1+pi}.
 
-        maxprec=N
-            Allow a maximum temporary working precision of N digits
+        maxn=<integer>
+            Allow a maximum temporary working precision of maxn digits
             (default=100)
 
         chop=<bool>
@@ -992,7 +1008,7 @@ def Basic_evalf(x, n=15, **options):
 
         strict=<bool>
             Raise PrecisionExhausted if any subresult fails to evaluate
-            to full accuracy, given the available maxprec
+            to full accuracy, given the available maxn
             (default=False)
 
         quad=<str>
@@ -1007,10 +1023,12 @@ def Basic_evalf(x, n=15, **options):
     if not evalf_table:
         _create_evalf_table()
     prec = dps_to_prec(n)
-    if 'maxprec' in options:
-        options['maxprec'] = int(options['maxprec']*LG10)
-    else:
-        options['maxprec'] = max(prec, DEFAULT_MAXPREC)
+    options = {'maxprec': max(prec,int(maxn*LG10)), 'chop': chop,
+               'strict': strict, 'verbose': verbose}
+    if subs is not None:
+        options['subs'] = subs
+    if quad is not None:
+        options['quad'] = quad
     try:
         result = evalf(x, prec+4, options)
     except NotImplementedError:
@@ -1048,8 +1066,8 @@ def N(x, n=15, **options):
     Both .evalf() and N() are equivalent, use the one that you like better.
 
     Example:
-    >>> from sympy import Sum, Symbol, oo
-    >>> k = Symbol("k")
+    >>> from sympy import Sum, Symbol, oo, N
+    >>> from sympy.abc import k
     >>> Sum(1/k**k, (k, 1, oo))
     Sum(k**(-k), (k, 1, oo))
     >>> N(Sum(1/k**k, (k, 1, oo)), 4)
@@ -1057,3 +1075,4 @@ def N(x, n=15, **options):
 
     """
     return sympify(x).evalf(n, **options)
+

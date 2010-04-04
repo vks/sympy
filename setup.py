@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Distutils based setup script for Sympy.
+"""Distutils based setup script for SymPy.
 
 This uses Distutils (http://python.org/sigs/distutils-sig/) the standard
 python mechanism for installing packages. For the easiest installation
@@ -16,9 +16,8 @@ In addition, there are some other commands:
 
     python setup.py clean -> will clean all trash (*.pyc and stuff)
     python setup.py test  -> will run the complete test suite
-    python setup.py test_core -> will run only tests concerning core features
-    python setup.py test_doc -> will run tests on the examples of the documentation
-    python setup.py bench   -> will run the complete benchmark suite
+    python setup.py bench -> will run the complete benchmark suite
+    python setup.py audit -> will run pyflakes checker on source code
 
 To get a full list of avaiable commands, read the output of:
 
@@ -35,7 +34,7 @@ import sys
 import sympy
 
 # Make sure I have the right Python version.
-if sys.version_info[1] < 4:
+if sys.version_info[:2] < (2,4):
     print "Sympy requires Python 2.4 or newer. Python %d.%d detected" % \
           sys.version_info[:2]
     sys.exit(-1)
@@ -45,6 +44,7 @@ if sys.version_info[1] < 4:
 # $ find * -name __init__.py |sort
 modules = [
     'sympy.assumptions',
+    'sympy.assumptions.handlers',
     'sympy.concrete',
     'sympy.core',
     'sympy.functions',
@@ -60,16 +60,18 @@ modules = [
     'sympy.parsing',
     'sympy.physics',
     'sympy.plotting',
-    'sympy.queries',
     'sympy.thirdparty',
     'sympy.logic',
     'sympy.logic.algorithms',
     'sympy.logic.utilities',
     'sympy.mpmath',
+    'sympy.mpmath.libmp',
+    'sympy.mpmath.functions',
+    'sympy.mpmath.matrices',
+    'sympy.mpmath.calculus',
     'sympy.polys',
     'sympy.printing',
     'sympy.printing.pretty',
-    'sympy.refine',
     'sympy.series',
     'sympy.simplify',
     'sympy.solvers',
@@ -78,12 +80,44 @@ modules = [
     'sympy.utilities.mathml',
     ]
 
-class clean(Command):
-    """Cleans *.pyc and debian trashs, so you should get the same copy as
-    is in the svn.
+class audit(Command):
+    """Audits Sympy's source code for following issues:
+        - Names which are used but not defined or used before they are defined.
+        - Names which are redefined without having been used.
     """
 
-    description = "Clean everything"
+    description = "Audit Sympy source with PyFlakes"
+    user_options = []
+
+    def initialize_options(self):
+        self.all = None
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        import os
+        try:
+            import pyflakes.scripts.pyflakes as flakes
+        except:
+            print """In order to run the audit, you need to have PyFlakes installed."""
+            sys.exit(-1)
+        dirs = [os.path.join(*i.split('.')) for i in modules]
+        warns = 0
+        for dir in dirs:
+            filenames = os.listdir(dir)
+            for filename in filenames:
+                if filename.endswith('.py') and filename != '__init__.py':
+                    warns += flakes.checkPath(os.path.join(dir, filename))
+        if warns > 0:
+            print ("Audit finished with total %d warnings" % warns)
+
+class clean(Command):
+    """Cleans *.pyc and debian trashs, so you should get the same copy as
+    is in the VCS.
+    """
+
+    description = "remove build files"
     user_options = [("all","a","the same")]
 
     def initialize_options(self):
@@ -99,61 +133,14 @@ class clean(Command):
         os.system("rm -f MANIFEST")
         os.system("rm -rf build")
         os.system("rm -rf dist")
-
-class gen_doc(Command):
-    """Generate the (html) api documentation using epydoc
-
-    output is sent to the directory ../api/
-    """
-
-    description = "generate the api doc"
-    user_options = []
-
-    target_dir = "../api/"
-
-    def initialize_options(self):
-        self.all = None
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        import os
-        os.system("epydoc --no-frames -o %s sympy" % self.target_dir)
-
-
-class test_sympy_core(Command):
-    """Run only the tests concerning features of sympy.core.
-    It's a lot faster than running the complete test suite.
-    """
-
-    description = "Automatically run the core test suite for Sympy."
-    user_options = []  # distutils complains if this is not here.
-
-    def initialize_options(self):  # distutils wants this
-        pass
-
-    def finalize_options(self):    # this too
-        pass
-
-
-    def run(self):
-        try:
-            import py
-        except ImportError:
-            print """In order to run the tests, you need codespeak's py.lib
-            web page: http://codespeak.net/py/dist/
-            If you are on debian systems, the package is named python-codespeak-lib
-            """
-            sys.exit(-1)
-        py.test.cmdline.main(args=["sympy/core/tests"])
+        os.system("rm -rf doc/_build")
 
 
 class test_sympy(Command):
     """Runs all tests under the sympy/ folder
     """
 
-    description = "Automatically run the test suite for Sympy."
+    description = "run all tests and doctests; also see bin/test and bin/doctest"
     user_options = []  # distutils complains if this is not here.
 
     def __init__(self, *args):
@@ -172,25 +159,11 @@ class test_sympy(Command):
             # (if some regular test fails, the doctests are not run)
             sympy.doctest()
 
-class test_sympy_doc(Command):
-
-    description = "Run the tests for the examples in the documentation"
-    user_options = []  # distutils complains if this is not here.
-
-    def initialize_options(self):  # distutils wants this
-        pass
-
-    def finalize_options(self):    # this too
-        pass
-
-    def run(self):
-        sympy.doctest()
-
 
 class run_benchmarks(Command):
     """Runs all SymPy benchmarks"""
 
-    description = "Automatically run the test suite for Sympy."
+    description = "run all benchmarks"
     user_options = []  # distutils complains if this is not here.
 
     def __init__(self, *args):
@@ -218,6 +191,7 @@ class run_benchmarks(Command):
 # Check that this list is uptodate against the result of the command:
 # $ python bin/generate_test_list.py
 tests = [
+    'sympy.assumptions.tests',
     'sympy.concrete.tests',
     'sympy.core.tests',
     'sympy.functions.combinatorial.tests',
@@ -248,21 +222,25 @@ tests = [
 # update the following list from:
 # http://pyglet.googlecode.com/svn/trunk/setup.py
 # (whenever we update pyglet in sympy)
+# try ./setup.py sdist to see if it works
 pyglet_packages=[
-    'pyglet',
-    'pyglet.gl',
-    'pyglet.font',
-    'pyglet.image',
-    'pyglet.image.codecs',
-    'pyglet.media',
-    'pyglet.media.drivers',
-    'pyglet.media.drivers.alsa',
-    'pyglet.media.drivers.directsound',
-    'pyglet.media.drivers.openal',
-    'pyglet.window',
-    'pyglet.window.carbon',
-    'pyglet.window.win32',
-    'pyglet.window.xlib',
+        'pyglet',
+        'pyglet.app',
+        'pyglet.font',
+        'pyglet.gl',
+        'pyglet.graphics',
+        'pyglet.image',
+        'pyglet.image.codecs',
+        'pyglet.media',
+        'pyglet.media.drivers',
+        'pyglet.media.drivers.directsound',
+        'pyglet.media.drivers.openal',
+        'pyglet.text',
+        'pyglet.text.formats',
+        'pyglet.window',
+        'pyglet.window.carbon',
+        'pyglet.window.win32',
+        'pyglet.window.xlib',
 ]
 pyglet_packages = ["sympy.thirdparty.pyglet." + s for s in pyglet_packages]
 
@@ -270,6 +248,8 @@ setup(
       name = 'sympy',
       version = sympy.__version__,
       description = 'Computer algebra system (CAS) in Python',
+      author = 'SymPy development team',
+      author_email = 'sympy@googlegroups.com',
       license = 'BSD',
       url = 'http://code.google.com/p/sympy',
       packages = ['sympy'] + modules + tests + pyglet_packages,
@@ -278,11 +258,9 @@ setup(
       package_data = { 'sympy.utilities.mathml' : ['data/*.xsl'] },
       data_files = [('share/man/man1', ['doc/man/isympy.1'])],
       cmdclass    = {'test': test_sympy,
-                     'test_core' : test_sympy_core,
-                     'test_doc' : test_sympy_doc,
-                     'bench'    : run_benchmarks,
-                     'gen_doc' : gen_doc,
-                     'clean' : clean,
+                     'bench': run_benchmarks,
+                     'clean': clean,
+                     'audit' : audit,
                      },
       )
 

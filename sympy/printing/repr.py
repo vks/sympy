@@ -2,14 +2,13 @@
 A Printer for generating executable code.
 
 The most important function here is srepr that returns a string so that the
-relation eval(srepr(expr))=expr holds in an apropriate environment.
+relation eval(srepr(expr))=expr holds in an appropriate environment.
 """
 
 from printer import Printer
-from sympy.printing.precedence import precedence
 from sympy.core import Basic
-import sympy.mpmath.libmpf as mlib
-from sympy.mpmath.settings import prec_to_dps, repr_dps
+import sympy.mpmath.libmp as mlib
+from sympy.mpmath.libmp import prec_to_dps, repr_dps
 
 class ReprPrinter(Printer):
     printmethod = "_sympyrepr_"
@@ -47,7 +46,7 @@ class ReprPrinter(Printer):
         return 'Function(%r)'%(expr.__name__)
 
     def _print_GeometryEntity(self, expr):
-        # GeometryEntity is special -- it's base is tuple
+        # GeometryEntity is special -- its base is tuple
         return repr(expr)
 
     def _print_Infinity(self, expr):
@@ -79,25 +78,11 @@ class ReprPrinter(Printer):
     def _print_One(self, expr):
         return "One"
 
-    def _print_Poly(self, expr):
-        terms = []
-
-        for coeff, monom in expr.iter_terms():
-            terms.append("(%s, %s)" % (self._print(coeff), monom))
-
-        format = expr.__class__.__name__ + "([%s], %s, order='%s')"
-
-        symbols = [ self._print(s) for s in expr.symbols ]
-
-        return format % (', '.join(terms),
-            ', '.join(symbols), expr.order)
-
-    def _print_Polynomial(self, expr):
-        return "Polynomial(%s, %s, %s, '%s')" % (self._print(expr.sympy_expr),
-                  self._print(expr.coeffs), self._print(expr.var), self._print(expr.order))
-
     def _print_Rational(self, expr):
         return '%s(%s, %s)' % (expr.__class__.__name__, self._print(expr.p), self._print(expr.q))
+
+    def _print_Fraction(self, expr):
+        return '%s(%s, %s)' % (expr.__class__.__name__, self._print(expr.numerator), self._print(expr.denominator))
 
     def _print_Real(self, expr):
         dps = prec_to_dps(expr._prec)
@@ -109,7 +94,10 @@ class ReprPrinter(Printer):
                                            self._print(expr.a), self._print(expr.b))
 
     def _print_Symbol(self, expr):
-        return "%s('%s')" % (expr.__class__.__name__, self._print(expr.name))
+        return "%s(%s)" % (expr.__class__.__name__, self._print(expr.name))
+
+    def _print_str(self, expr):
+        return repr(expr)
 
     def _print_tuple(self, expr):
         if len(expr)==1:
@@ -123,8 +111,10 @@ class ReprPrinter(Printer):
     def _print_Zero(self, expr):
         return "Zero"
 
-RPrinter = ReprPrinter()
+    def _print_AlgebraicNumber(self, expr):
+        return "%s(%s, %s)" % (self.__class__.__name__,
+            self._print(self.coeffs()), self._print(expr.root))
 
-def srepr(expr):
+def srepr(expr, **settings):
     """return expr in repr form"""
-    return RPrinter.doprint(expr)
+    return ReprPrinter(settings).doprint(expr)

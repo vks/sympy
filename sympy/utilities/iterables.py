@@ -1,14 +1,21 @@
 from sympy.core.symbol import Symbol
 
 def iff(condition, result1, result2):
-    """return result1 if condition else result2
+    """
+    Return result1 if condition else result2
 
     This is a replacement for the conditional if statement that is part of
     python 2.5+. If the condition must should not be called unless the
     condition is met, then wrap the result in a lambda; it will be called
     to return the result:
 
-    iff(x == 0, x, lambda: 1/x).
+    >>> from sympy import iff
+    >>> x = 0.5
+    >>> iff(x == 0, x, lambda: 1/x)
+    2.0
+    >>> x = 0
+    >>> iff(x == 0, x, lambda: 1/x)
+    0
     """
 
     if condition:
@@ -21,22 +28,28 @@ def iff(condition, result1, result2):
     else:
         return rv
 
+
+from sympy.core.basic import Basic
+
+
 def all(iterable):
-    """Return True if all elements are set to True. This
-       function does not support predicates explicitely,
-       but this behaviour can be simulated easily using
-       list comprehension.
+    """
+    Return True if all elements are set to True. This
+    function does not support predicates explicitly,
+    but this behavior can be simulated easily using
+    list comprehension.
 
-       >>> all( [True, True, True] )
-       True
-       >>> all( [True, False, True] )
-       False
-       >>> all( [ x % 2 == 0 for x in [2, 6, 8] ] )
-       True
-       >>> all( [ x % 2 == 0 for x in [2, 6, 7] ] )
-       False
+    >>> from sympy import all
+    >>> all( [True, True, True] )
+    True
+    >>> all( [True, False, True] )
+    False
+    >>> all( [ x % 2 == 0 for x in [2, 6, 8] ] )
+    True
+    >>> all( [ x % 2 == 0 for x in [2, 6, 7] ] )
+    False
 
-       NOTE: Starting from Python 2.5 this a built-in.
+    NOTE: Starting from Python 2.5 this a built-in.
     """
     for item in iterable:
         if not item:
@@ -44,21 +57,23 @@ def all(iterable):
     return True
 
 def any(iterable):
-    """Return True if at least one element is set to True.
-       This function does not support predicates explicitely,
-       but this behaviour can be simulated easily using
-       list comprehension.
+    """
+    Return True if at least one element is set to True.
+    This function does not support predicates explicitly,
+    but this behavior can be simulated easily using
+    list comprehension.
 
-       >>> any( [False, False, False] )
-       False
-       >>> any( [False, True, False] )
-       True
-       >>> any( [ x % 2 == 1 for x in [2, 6, 8] ] )
-       False
-       >>> any( [ x % 2 == 1 for x in [2, 6, 7] ] )
-       True
+    >>> from sympy import any
+    >>> any( [False, False, False] )
+    False
+    >>> any( [False, True, False] )
+    True
+    >>> any( [ x % 2 == 1 for x in [2, 6, 8] ] )
+    False
+    >>> any( [ x % 2 == 1 for x in [2, 6, 7] ] )
+    True
 
-       NOTE: Starting from Python 2.5 this a built-in.
+    NOTE: Starting from Python 2.5 this a built-in.
     """
     for item in iterable:
         if item:
@@ -66,19 +81,20 @@ def any(iterable):
     return False
 
 def make_list(expr, kind):
-    """Returns a list of elements taken from specified expresion
-       when it is of sequence type (Add or Mul) or singleton list
-       otherwise (Rational, Pow etc.).
+    """
+    Returns a list of elements taken from specified expression
+    when it is of sequence type (Add or Mul) or singleton list
+    otherwise (Rational, Pow etc.).
 
-       >>> from sympy import *
-       >>> x, y = map(Symbol, 'xy')
+    >>> from sympy import Symbol, make_list, Mul, Add
+    >>> x, y = map(Symbol, 'xy')
 
-       >>> make_list(x*y, Mul)
-       [x, y]
-       >>> make_list(x*y, Add)
-       [x*y]
-       >>> set(make_list(x*y + y, Add)) == set([y, x*y])
-       True
+    >>> make_list(x*y, Mul)
+    [x, y]
+    >>> make_list(x*y, Add)
+    [x*y]
+    >>> set(make_list(x*y + y, Add)) == set([y, x*y])
+    True
 
     """
     if isinstance(expr, kind):
@@ -88,28 +104,28 @@ def make_list(expr, kind):
 
 
 def flatten(iterable, cls=None):
-    """Recursively denest iterable containers.
+    """
+    Recursively denest iterable containers.
 
-       >>> flatten([1, 2, 3])
-       [1, 2, 3]
-       >>> flatten([1, 2, [3]])
-       [1, 2, 3]
-       >>> flatten([1, [2, 3], [4, 5]])
-       [1, 2, 3, 4, 5]
-       >>> flatten( (1,2, (1, None)) )
-       [1, 2, 1, None]
+    >>> from sympy.utilities.iterables import flatten
+    >>> flatten([1, 2, 3])
+    [1, 2, 3]
+    >>> flatten([1, 2, [3]])
+    [1, 2, 3]
+    >>> flatten([1, [2, 3], [4, 5]])
+    [1, 2, 3, 4, 5]
+    >>> flatten( (1,2, (1, None)) )
+    [1, 2, 1, None]
 
-       If cls argument is specif, it will only flatten instances of that
-       class, for example:
+    If cls argument is specif, it will only flatten instances of that
+    class, for example:
 
-       >>> from sympy.core import Basic
-       >>> class MyOp(Basic):
-       ...     pass
-       ...
-       >>> flatten([MyOp(1, MyOp(2, 3))], cls=MyOp)
-       [1, 2, 3]
-
-
+    >>> from sympy.core import Basic
+    >>> class MyOp(Basic):
+    ...     pass
+    ...
+    >>> flatten([MyOp(1, MyOp(2, 3))], cls=MyOp)
+    [1, 2, 3]
 
     adapted from http://kogs-www.informatik.uni-hamburg.de/~meine/python_tricks
     """
@@ -128,7 +144,8 @@ def flatten(iterable, cls=None):
     return result
 
 def postorder_traversal(node):
-    """ Do a postorder traversal of a tree.
+    """
+    Do a postorder traversal of a tree.
 
     This generator recursively yields nodes that it has visited in a postorder
     fashion. That is, it descends through the tree depth-first to yield all of
@@ -148,22 +165,28 @@ def postorder_traversal(node):
     --------
     >>> from sympy import symbols
     >>> from sympy.utilities.iterables import postorder_traversal
-    >>> x,y,z = symbols('xyz')
+    >>> from sympy.abc import x, y, z
     >>> set(postorder_traversal((x+y)*z)) == set([z, y, x, x + y, z*(x + y)])
     True
 
     """
-    for arg in node.args:
-        for subtree in postorder_traversal(arg):
-            yield subtree
+    if isinstance(node, Basic):
+        for arg in node.args:
+            for subtree in postorder_traversal(arg):
+                yield subtree
+    elif hasattr(node, "__iter__"):
+        for item in node:
+            for subtree in postorder_traversal(item):
+                yield subtree
     yield node
 
 def preorder_traversal(node):
-    """ Do a preorder traversal of a tree.
+    """
+    Do a pre-order traversal of a tree.
 
-    This generator recursively yields nodes that it has visited in a preorder
+    This generator recursively yields nodes that it has visited in a pre-order
     fashion. That is, it yields the current node then descends through the tree
-    breadth-first to yield all of a node's children's preorder traversal.
+    breadth-first to yield all of a node's children's pre-order traversal.
 
     Parameters
     ----------
@@ -179,25 +202,32 @@ def preorder_traversal(node):
     --------
     >>> from sympy import symbols
     >>> from sympy.utilities.iterables import preorder_traversal
-    >>> x,y,z = symbols('xyz')
+    >>> from sympy.abc import x, y, z
     >>> set(preorder_traversal((x+y)*z)) == set([z, x + y, z*(x + y), x, y])
     True
 
     """
     yield node
-    for arg in node.args:
-        for subtree in preorder_traversal(arg):
-            yield subtree
+    if isinstance(node, Basic):
+        for arg in node.args:
+            for subtree in preorder_traversal(arg):
+                yield subtree
+    elif hasattr(node, "__iter__"):
+        for item in node:
+            for subtree in preorder_traversal(item):
+                yield subtree
 
 def subsets(M, k):
-    """Generates all k-subsets of n-element set.
+    """
+    Generates all k-subsets of n-element set.
 
-       A k-subset of n-element set is any subset of length exactly k. The
-       number of k-subsets on n elements is given by binom(n, k), whereas
-       there are 2**n subsets all together.
+    A k-subset of n-element set is any subset of length exactly k. The
+    number of k-subsets on n elements is given by binom(n, k), whereas
+    there are 2**n subsets all together.
 
-       >>> list(subsets([1, 2, 3], 2))
-       [[1, 2], [1, 3], [2, 3]]
+    >>> from sympy.utilities.iterables import subsets
+    >>> list(subsets([1, 2, 3], 2))
+    [[1, 2], [1, 3], [2, 3]]
 
     """
     def recursion(result, M, k):
@@ -216,8 +246,10 @@ def subsets(M, k):
 
 
 def cartes(seq0, seq1, modus='pair'):
-    """Return the cartesian product of two sequences
+    """
+    Return the Cartesian product of two sequences
 
+    >>> from sympy.utilities.iterables import cartes
     >>> cartes([1,2], [3,4])
     [[1, 3], [1, 4], [2, 3], [2, 4]]
 
@@ -228,14 +260,16 @@ def cartes(seq0, seq1, modus='pair'):
         return [item0 + [item1] for item0 in seq0 for item1 in seq1]
 
 def variations(seq, n, repetition=False):
-    """Returns all the variations of the list of size n.
+    """
+    Returns all the variations of the list of size n.
 
     variations(seq, n, True) will return all the variations of the list of
-        size n with repetitions
+    size n with repetitions
 
     variations(seq, n, False) will return all the variations of the list of
-        size n without repetitions
+    size n without repetitions
 
+    >>> from sympy.utilities.iterables import variations
     >>> variations([1,2,3], 2)
     [[1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2]]
     >>> variations([1,2,3], 2, repetition=True)
@@ -263,7 +297,8 @@ def variations(seq, n, repetition=False):
     return [[seq[index] for index in indices] for indices in result]
 
 def numbered_symbols(prefix='x', function=Symbol, start=0, *args, **assumptions):
-    """ Generate an infinite stream of Symbols consisting of a prefix and
+    """
+    Generate an infinite stream of Symbols consisting of a prefix and
     increasing subscripts.
 
     Parameters

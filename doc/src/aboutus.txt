@@ -68,7 +68,7 @@ want to be mentioned here, so see our repository history for a full list).
 #. Brian E. Granger: second quantization physics module
 #. Andrew Straw: lambdify() improvements
 #. Kaifeng Zhu: factorint() fix
-#. Ted Horst: Basic.__call__() fix
+#. Ted Horst: Basic.__call__() fix, pretty printing fix
 #. Akshay Srinivasan: Printing fix, improvements to integration
 #. Aaron Meurer: ODE solvers (GSoC 2009), other fixes
 #. Barry Wardell: implement series as function, several tests added
@@ -82,15 +82,23 @@ want to be mentioned here, so see our repository history for a full list).
 #. Florian Mickler: reimplementation of convex_hull, several geometry module fixes
 #. Nicolas Pourcelot: Infinity comparison fixes, latex fixes
 #. Ben Goodrich: Matrix.jacobian() function improvements and fixes
-#. Toon Verstraelen: code generation module
-#. Ronan Lamy: test coverage script; limit, expansion and other fixes
+#. Toon Verstraelen: code generation module, latex printing improvements
+#. Ronan Lamy: test coverage script; limit, expansion and other fixes and improvements; cleanup
 #. James Abbatiello: fixes tests on windows
-#. Ryan Krauss: fixes could_extract_minus_sign() and latex fixes
+#. Ryan Krauss: fixes could_extract_minus_sign(), latex fixes and improvements
 #. Bill Flynn: substitution fixes
 #. Jorn Baayen: improvements to piecewise functions and latex printing, bug fixes
 #. Eh Tan: improve trigonometric simplification
 #. Renato Coutinho: derivative improvements
 #. Oscar Benjamin: latex printer fix
+#. Øyvind Jensen: implemented coupled cluster expansion and wick theorem, improvements to assumptions, bugfixes
+#. Julio Idichekop Filho: indentation fixes, docstring improvements
+#. Łukasz Pankowski: fix matrix multiplication with numpy scalars
+#. Chu-Ching Huang: fix 3d plotting example
+#. Fernando Perez: symarray() implemented
+#. Raffaele De Feo: Fix non-commutative expansion
+#. Christian Muise: fixes to logic module
+
 
 Up-to-date list in the order of the first contribution is given in the `AUTHORS
 <http://git.sympy.org/?p=sympy.git;f=AUTHORS;hb=HEAD>`_ file.

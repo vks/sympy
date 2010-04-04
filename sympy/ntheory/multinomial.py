@@ -26,12 +26,13 @@ def multinomial_coefficients(m, n, _tuple=tuple, _zip=zip):
 
     For example:
 
+    >>> from sympy.ntheory import multinomial_coefficients
     >>> print multinomial_coefficients(2,5)
     {(3, 2): 10, (1, 4): 5, (2, 3): 10, (5, 0): 1, (0, 5): 1, (4, 1): 5}
 
     The algorithm is based on the following result:
 
-       Consider a polynomial and it's ``m``-th exponent::
+       Consider a polynomial and its ``m``-th exponent::
 
          P(x) = sum_{i=0}^m p_i x^k
          P(x)^n = sum_{k=0}^{m n} a(n,k) x^k

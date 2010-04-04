@@ -1,6 +1,6 @@
 """Printing subsystem driver
 
-Sympy's printing system works the following way: Any expression can be passed to
+SymPy's printing system works the following way: Any expression can be passed to
 a designated Printer who then is responsible to return a adequate representation
 of that expression.
 
@@ -13,7 +13,7 @@ Some more information how the single concepts work and who should use which:
 
 1. The object prints itself
 
-    This was the original way of doing printing in sympy. Every class had it's
+    This was the original way of doing printing in sympy. Every class had its
     own latex, mathml, str and repr methods, but it turned out that it is hard
     to produce a high quality printer, if all the methods are spread out that
     far. Therefor all printing code was combined into the different printers,
@@ -27,7 +27,7 @@ Some more information how the single concepts work and who should use which:
 
 2. Take the best fitting method defined in the printer.
 
-    The printer loops through expr classes (class + it's bases), and tries to dispatch the
+    The printer loops through expr classes (class + its bases), and tries to dispatch the
     work to _print_<EXPR_CLASS>
 
     e.g., suppose we have the following class hierarchy::
@@ -65,10 +65,15 @@ Some more information how the single concepts work and who should use which:
     not defined in the Printer subclass this will be the same as str(expr)
 """
 
+from sympy import Basic, Mul
+
+from sympy.polys.polyutils import _analyze_power
+from sympy.polys.monomialtools import monomial_cmp
+
 class Printer(object):
     """Generic printer
 
-    It's job is to provide infrastructure for implementing new printers easily.
+    Its job is to provide infrastructure for implementing new printers easily.
 
     Basically, if you want to implement a printer, all you have to do is:
 
@@ -82,7 +87,7 @@ class Printer(object):
 
        For each class you want to provide printing to, define an appropriate
        method how to do it. For example if you want a class FOO to be printed in
-       it's own way, define _print_FOO:
+       its own way, define _print_FOO:
 
        def _print_FOO(self, e):
            ...
@@ -148,7 +153,7 @@ class Printer(object):
                     i += 1
                 return s
 
-        # Overide the __str__ method of to use CustromStrPrinter
+        # Override the __str__ method of to use CustromStrPrinter
         Basic.__str__ = lambda self: CustomStrPrinter().doprint(self)
         # Demonstration of CustomStrPrinter:
         t = Symbol('t')
@@ -171,16 +176,41 @@ class Printer(object):
     is subclassed from Basic.
 
     """
-    def __init__(self):
+
+    _default_settings = {
+        "order": None,
+    }
+
+    def __init__(self, settings=None):
         self._str = str
         if not hasattr(self, "printmethod"):
             self.printmethod = None
         if not hasattr(self, "emptyPrinter"):
             self.emptyPrinter = str
+        self._settings = self._default_settings.copy()
+        if settings is not None:
+            self._settings.update(settings)
+            if len(self._settings) > len(self._default_settings):
+                for key in self._settings:
+                    if key not in self._default_settings:
+                        raise TypeError("Unknown setting '%s'." % key)
 
         # _print_level is the number of times self._print() was recursively
         # called. See StrPrinter._print_Real() for an example of usage
         self._print_level = 0
+
+        # configure ordering of terms in Add (e.g. lexicographic ordering)
+        if self._settings["order"] is not None:
+            order = self._settings["order"]
+            if order.startswith('rev-'):
+                self.order = monomial_cmp(order[4:])
+                self.reverse = True
+            else:
+                self.order = monomial_cmp(order)
+                self.reverse = False
+        else:
+            self.order = None
+            self.reverse = False
 
     def doprint(self, expr):
         """Returns printer's representation for expr (as a string)"""
@@ -225,3 +255,68 @@ class Printer(object):
             return res
         finally:
             self._print_level -= 1
+
+    def analyze(self, expr):
+        """Rewrite an expression as sorted list of terms. """
+        gens, terms = set([]), []
+
+        for term in expr.as_Add():
+            coeff, cpart, ncpart = [], {}, []
+
+            for factor in term.as_Mul():
+                if not factor.is_commutative:
+                    ncpart.append(factor)
+                else:
+                    if factor.is_Number:
+                        coeff.append(factor)
+                    else:
+                        base, exp = _analyze_power(*factor.as_Pow())
+
+                        cpart[base] = exp
+                        gens.add(base)
+
+            terms.append((coeff, cpart, ncpart, term))
+
+        gens = sorted(gens, Basic._compare_pretty)
+
+        k, indices = len(gens), {}
+
+        for i, g in enumerate(gens):
+            indices[g] = i
+
+        result = []
+
+        for coeff, cpart, ncpart, term in terms:
+            monom = [0]*k
+
+            for base, exp in cpart.iteritems():
+                monom[indices[base]] = exp
+
+            result.append((coeff, monom, ncpart, term))
+
+        if self.order is None:
+            return sorted(result, Basic._compare_pretty)
+        else:
+            return sorted(result, self._compare_terms)
+
+    def _compare_terms(self, a, b):
+        """Compare two terms using data from Printer.analyze(). """
+        a_coeff, a_monom, a_ncpart, _ = a
+        b_coeff, b_monom, b_ncpart, _ = b
+
+        result = self.order(a_monom, b_monom)
+
+        if not result:
+            if not (a_ncpart or b_ncpart):
+                result = cmp(a_coeff, b_coeff)
+            else:
+                result = Basic._compare_pretty(Mul(*a_ncpart), Mul(*b_ncpart))
+
+                if not result:
+                    result = cmp(a_coeff, b_coeff)
+
+        if not self.reverse:
+            return -result
+        else:
+            return result
+

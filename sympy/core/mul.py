@@ -3,7 +3,7 @@ from operations import AssocOp
 from cache import cacheit
 from logic import fuzzy_not
 from numbers import Integer, Rational
-from symbol import Symbol
+from symbol import Symbol, Wild
 from sympy.utilities.iterables import make_list
 
 # internal marker to indicate:
@@ -12,6 +12,7 @@ class NC_Marker:
     is_Order    = False
     is_Mul      = False
     is_Number   = False
+    is_Poly     = False
 
     is_commutative = False
 
@@ -100,7 +101,8 @@ class Mul(AssocOp):
 
                 #         n          n          n
                 # (-3 + y)   ->  (-1)  * (3 - y)
-                if b.is_Add and e.is_Number:
+                if not Basic.keep_sign and b.is_Add and e.is_Number:
+                    #found factor (x+y)**number; split off initial coefficient
                     c, t = b.as_coeff_terms()
                     if not e.is_integer and c.is_negative:
                         # Although at present Add.as_coeff_terms() returns +/-1
@@ -318,7 +320,6 @@ class Mul(AssocOp):
 
                 if e.is_rational:
                     coeff, rest = b.as_coeff_terms()
-                    from sympy.functions import sign
                     unk=[]
                     nonneg=[]
                     neg=[]
@@ -547,19 +548,82 @@ class Mul(AssocOp):
             factors.append(Mul(*(terms[:i]+[t]+terms[i+1:])))
         return Add(*factors)
 
-    def _matches_simple(pattern, expr, repl_dict):
+    def _matches_simple(self, expr, repl_dict):
         # handle (w*3).matches('x*5') -> {w: x*5/3}
-        coeff, terms = pattern.as_coeff_terms()
+        coeff, terms = self.as_coeff_terms()
         if len(terms)==1:
             return terms[0].matches(expr / coeff, repl_dict)
         return
 
-    def matches(pattern, expr, repl_dict={}, evaluate=False):
+    def matches(self, expr, repl_dict={}, evaluate=False):
         expr = sympify(expr)
-        if pattern.is_commutative and expr.is_commutative:
-            return AssocOp._matches_commutative(pattern, expr, repl_dict, evaluate)
+        if self.is_commutative and expr.is_commutative:
+            return AssocOp._matches_commutative(self, expr, repl_dict, evaluate)
         # todo for commutative parts, until then use the default matches method for non-commutative products
-        return Basic.matches(pattern, expr, repl_dict, evaluate)
+        return self._matches(expr, repl_dict, evaluate)
+
+    def _matches(self, expr, repl_dict={}, evaluate=False):
+        # weed out negative one prefixes
+        sign = 1
+        if self.args[0] == -1:
+            self = -self; sign = -sign
+        if expr.is_Mul and expr.args[0] == -1:
+            expr = -expr; sign = -sign
+
+        if evaluate:
+            return self.subs(repl_dict).matches(expr, repl_dict)
+        expr = sympify(expr)
+        if not isinstance(expr, self.__class__):
+            # if we can omit the first factor, we can match it to sign * one
+            if Mul(*self.args[1:]) == expr:
+                return self.args[0].matches(Rational(sign), repl_dict, evaluate)
+            # two-factor product: if the 2nd factor matches, the first part must be sign * one
+            if len(self.args[:]) == 2:
+                dd = self.args[1].matches(expr, repl_dict, evaluate)
+                if dd == None:
+                    return None
+                dd = self.args[0].matches(Rational(sign), dd, evaluate)
+                return dd
+            return None
+
+        if len(self.args[:])==0:
+            if self == expr:
+                return repl_dict
+            return None
+        d = repl_dict.copy()
+
+        # weed out identical terms
+        pp = list(self.args)
+        ee = list(expr.args)
+        for p in self.args:
+            if p in expr.args:
+                ee.remove(p)
+                pp.remove(p)
+
+        # only one symbol left in pattern -> match the remaining expression
+        if len(pp) == 1 and isinstance(pp[0], Wild):
+            if len(ee) == 1:
+                d[pp[0]] = sign * ee[0]
+            else:
+                d[pp[0]] = sign * (type(expr)(*ee))
+            return d
+
+        if len(ee) != len(pp):
+            return None
+
+        i = 0
+        for p, e in zip(pp, ee):
+            if i == 0 and sign != 1:
+                try:
+                    e = sign * e
+                except TypeError:
+                    return None
+            d = p.matches(e, d, evaluate=not i)
+            i += 1
+            if d is None:
+                return None
+        return d
+
 
     @staticmethod
     def _combine_inverse(lhs, rhs):
@@ -615,45 +679,47 @@ class Mul(AssocOp):
 
     def _eval_is_real(self):
         im_count = 0
-        re_not   = False
-
+        is_neither = False
         for t in self.args:
             if t.is_imaginary:
                 im_count += 1
                 continue
-
             t_real = t.is_real
             if t_real:
                 continue
-
-            elif fuzzy_not(t_real):
-                re_not = True
-
+            elif t_real is False:
+                if is_neither:
+                    return None
+                else:
+                    is_neither = True
             else:
                 return None
-
-        if re_not:
+        if is_neither:
             return False
 
         return (im_count % 2 == 0)
 
-
     def _eval_is_imaginary(self):
         im_count = 0
-
+        is_neither = False
         for t in self.args:
             if t.is_imaginary:
                 im_count += 1
-
-            elif t.is_real:
                 continue
-
-            # real=F|U
+            t_real = t.is_real
+            if t_real:
+                continue
+            elif t_real is False:
+                if is_neither:
+                    return None
+                else:
+                    is_neither = True
             else:
                 return None
+        if is_neither:
+            return False
 
         return (im_count % 2 == 1)
-
 
 
     def _eval_is_irrational(self):
@@ -883,9 +949,13 @@ class Mul(AssocOp):
             s *= x._sage_()
         return s
 
+    def as_Mul(self):
+        """Returns `self` as it was `Mul` instance. """
+        return list(self.args)
 
 from power import Pow
 from numbers import Real
 from function import FunctionClass
 from sympify import sympify
 from add import Add
+

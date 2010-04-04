@@ -13,20 +13,19 @@ pprint_try_use_unicode = pretty_try_use_unicode
 
 
 class PrettyPrinter(Printer):
-    """Printer, which converts an expression into 2D ascii-art figure."""
+    """Printer, which converts an expression into 2D ASCII-art figure."""
+    printmethod = "_pretty_"
 
-    def __init__(self, profile=None):
-        Printer.__init__(self)
+    _default_settings = {
+        "order": None,
+        "full_prec": "auto",
+        "use_unicode": True,
+        "wrap_line": True,
+    }
+
+    def __init__(self, settings=None):
+        Printer.__init__(self, settings)
         self.emptyPrinter = lambda x : prettyForm(xstr(x))
-
-        self._settings = {
-                "full_prec" : "auto",
-                "use_unicode" : True,
-                "wrap_line" : True,
-        }
-
-        if profile is not None:
-            self._settings.update(profile)
 
     def doprint(self, expr):
         return self._print(expr).render(**self._settings)
@@ -110,14 +109,14 @@ class PrettyPrinter(Printer):
         syms.reverse()
         x = None
         for sym in syms:
-            S = self._print(sym)
-            dS= prettyForm(*S.left('d'))
+            s = self._print(sym)
+            ds = prettyForm(*s.left('d'))
 
             if x is None:
-                x = dS
+                x = ds
             else:
                 x = prettyForm(*x.right(' '))
-                x = prettyForm(*x.right(dS))
+                x = prettyForm(*x.right(ds))
 
         f = prettyForm(binding=prettyForm.FUNC, *self._print(deriv.expr).parens())
 
@@ -169,7 +168,7 @@ class PrettyPrinter(Printer):
 
         # \int \int \int ...
         firstterm = True
-        S = None
+        s = None
         for x,ab in integral.limits:
             # Create bar based on the height of the argument
             h = arg.height()
@@ -221,12 +220,12 @@ class PrettyPrinter(Printer):
                 pform = prettyForm(*pform.right(' '))
 
             if firstterm:
-                S = pform   # first term
+                s = pform   # first term
                 firstterm = False
             else:
-                S = prettyForm(*S.left(pform))
+                s = prettyForm(*s.left(pform))
 
-        pform = prettyForm(*arg.left(S))
+        pform = prettyForm(*arg.left(s))
         return pform
 
 
@@ -259,10 +258,10 @@ class PrettyPrinter(Printer):
 
     def _print_Matrix(self, e):
         M = e   # matrix
-        S = {}  # i,j -> pretty(M[i,j])
+        Ms = {}  # i,j -> pretty(M[i,j])
         for i in range(M.rows):
             for j in range(M.cols):
-                S[i,j] = self._print(M[i,j])
+                Ms[i,j] = self._print(M[i,j])
 
         # h- and v- spacers
         hsep = 2
@@ -272,7 +271,7 @@ class PrettyPrinter(Printer):
         maxw = [-1] * M.cols
 
         for j in range(M.cols):
-            maxw[j] = max([S[i,j].width()  for i in range(M.rows)])
+            maxw[j] = max([Ms[i,j].width()  for i in range(M.rows)])
 
 
         # drawing result
@@ -282,7 +281,7 @@ class PrettyPrinter(Printer):
 
             D_row = None
             for j in range(M.cols):
-                s = S[i,j]
+                s = Ms[i,j]
 
                 # reshape s to maxw
                 # XXX this should be generalized, and go to stringPict.reshape ?
@@ -407,15 +406,18 @@ class PrettyPrinter(Printer):
         else:
             return self._print_Function(e)
 
-    def _print_Add(self, sum):
-        args = list(sum.args)
-        args.sort(Basic._compare_pretty)
+    def _print_Add(self, expr):
+        if self.order is None:
+            terms = sorted(expr.args, Basic._compare_pretty)
+        else:
+            terms = [ elt[-1] for elt in self.analyze(expr) ]
+
         pforms = []
-        for x in args:
-            # Check for negative "things" so that this information can be enforce upon
-            # the pretty form so that it can be made of use (such as in a sum).
-            if x.is_Mul and x.as_coeff_terms()[0] < 0:
-                pform1 = self._print(-x)
+
+        for term in terms:
+            if term.is_Mul and term.as_coeff_terms()[0] < 0:
+                pform1 = self._print(-term)
+
                 if len(pforms) == 0:
                     if pform1.height() > 1:
                         pform2 = '- '
@@ -423,21 +425,26 @@ class PrettyPrinter(Printer):
                         pform2 = '-'
                 else:
                     pform2 = ' - '
+
                 pform = stringPict.next(pform2, pform1)
                 pforms.append(prettyForm(binding=prettyForm.NEG, *pform))
-            elif x.is_Number and x < 0:
-                pform1 = self._print(-x)
+            elif term.is_Number and term < 0:
+                pform1 = self._print(-term)
+
                 if len(pforms) == 0:
                     if pform1.height() > 1:
                         pform2 = '- '
                     else:
                         pform2 = '-'
+
                     pform = stringPict.next(pform2, pform1)
                 else:
                     pform = stringPict.next(' - ', pform1)
+
                 pforms.append(prettyForm(binding=prettyForm.NEG, *pform))
             else:
-                pforms.append(self._print(x))
+                pforms.append(self._print(term))
+
         return prettyForm.__add__(*pforms)
 
     def _print_Mul(self, product):
@@ -481,7 +488,7 @@ class PrettyPrinter(Printer):
     def _print_Pow(self, power):
         # square roots, other roots or n-th roots
         #test for fraction 1/n or power x**-1
-        if (isinstance(power.exp, C.Rational) and power.exp.p==1) or \
+        if (isinstance(power.exp, C.Rational) and power.exp.p==1 and power.exp.q !=1) or \
            (   isinstance(power.exp, C.Pow) and
                isinstance(power.exp.args[0], C.Symbol) and
                power.exp.args[1]==S.NegativeOne):
@@ -526,21 +533,37 @@ class PrettyPrinter(Printer):
         b,e = power.as_base_exp()
         return self._print(b)**self._print(e)
 
-    def _print_Rational(self, r):
-        if r.q == 1:
-            if r.is_negative:
-                return prettyForm(str(r.p),binding=prettyForm.NEG)
+    def __print_numer_denom(self, p, q):
+        if q == 1:
+            if p < 0:
+                return prettyForm(str(p),binding=prettyForm.NEG)
             else:
-                return prettyForm(str(r.p))
-        elif abs(r.p) >= 10 and abs(r.q) >= 10:
+                return prettyForm(str(p))
+        elif abs(p) >= 10 and abs(q) >= 10:
             # If more than one digit in numer and denom, print larger fraction
-            if r.is_negative:
-                pform = prettyForm(str(-r.p))/prettyForm(str(r.q))
+            if p < 0:
+                pform = prettyForm(str(-p))/prettyForm(str(q))
                 return prettyForm(binding=prettyForm.NEG, *pform.left('- '))
             else:
-                return prettyForm(str(r.p))/prettyForm(str(r.q))
+                return prettyForm(str(p))/prettyForm(str(q))
         else:
-            return self.emptyPrinter(r)
+            return None
+
+    def _print_Rational(self, expr):
+        result = self.__print_numer_denom(expr.p, expr.q)
+
+        if result is not None:
+            return result
+        else:
+            return self.emptyPrinter(expr)
+
+    def _print_Fraction(self, expr):
+        result = self.__print_numer_denom(expr.numerator, expr.denominator)
+
+        if result is not None:
+            return result
+        else:
+            return self.emptyPrinter(expr)
 
     def _print_Interval(self, i):
         if i.start == i.end:
@@ -569,36 +592,36 @@ class PrettyPrinter(Printer):
 
         union_delimiter = ' %s ' % pretty_atom('Union')
 
-        S2 = self._print_seq(other_sets, None, None, union_delimiter)
+        s2 = self._print_seq(other_sets, None, None, union_delimiter)
 
         if len(singletons) > 0:
-            S1 = self._print_seq(singletons, '{', '}')
+            s1 = self._print_seq(singletons, '{', '}')
 
-            S = prettyForm(*stringPict.next(S1, union_delimiter))
-            S = prettyForm(*stringPict.next(S, S2))
+            s = prettyForm(*stringPict.next(s1, union_delimiter))
+            s = prettyForm(*stringPict.next(s, s2))
         else:
-            S = S2
+            s = s2
 
-        return S
+        return s
 
     def _print_seq(self, seq, left=None, right=None, delimiter=', '):
-        S = None
+        s = None
 
         for item in seq:
             pform = self._print(item)
 
-            if S is None:
+            if s is None:
                 # first element
-                S = pform
+                s = pform
             else:
-                S = prettyForm(*stringPict.next(S, delimiter))
-                S = prettyForm(*stringPict.next(S, pform))
+                s = prettyForm(*stringPict.next(s, delimiter))
+                s = prettyForm(*stringPict.next(s, pform))
 
-        if S is None:
-            S = stringPict('')
+        if s is None:
+            s = stringPict('')
 
-        S = prettyForm(*S.parens(left, right, ifascii_nougly=True))
-        return S
+        s = prettyForm(*s.parens(left, right, ifascii_nougly=True))
+        return s
 
     def _print_list(self, l):
         return self._print_seq(l, '[', ']')
@@ -619,25 +642,30 @@ class PrettyPrinter(Printer):
         for k in keys:
             K = self._print(k)
             V = self._print(d[k])
-            S = prettyForm(*stringPict.next(K, ': ', V))
+            s = prettyForm(*stringPict.next(K, ': ', V))
 
-            items.append(S)
+            items.append(s)
 
         return self._print_seq(items, '{', '}')
 
-    def __print_set(self, s):
-        items = list(s)
+    def __print_set(self, set_):
+        items = list(set_)
         items.sort( Basic.compare_pretty )
 
-        S = self._print_seq(items, '(', ')')
-        S = prettyForm(*stringPict.next(type(s).__name__, S))
-        return S
+        s = self._print_seq(items, '(', ')')
+        s = prettyForm(*stringPict.next(type(set_).__name__, s))
+        return s
 
     _print_set       = __print_set
     _print_frozenset = __print_set
 
+    def _print_AlgebraicNumber(self, expr):
+        if expr.is_aliased:
+            return self._print(expr.as_poly().as_basic())
+        else:
+            return self._print(expr.as_basic())
 
-def pretty(expr, profile=None, **kargs):
+def pretty(expr, **settings):
     """
     Returns a string containing the prettified form of expr.
 
@@ -645,27 +673,25 @@ def pretty(expr, profile=None, **kargs):
     ---------
     expr: the expression to print
     wrap_line: line wrapping enabled/disabled, should be a boolean value (default to True)
-    use_unicode: use unicode characters, such as the greek letter pi instead of
+    use_unicode: use unicode characters, such as the Greek letter pi instead of
         the string pi. Values should be boolean or None
-    full_prec: use full precission. Default to "auto"
+    full_prec: use full precision. Default to "auto"
     """
-    if profile is not None:
-        profile.update(kargs)
-    else:
-        profile = kargs
-    uflag = pretty_use_unicode(kargs.get("use_unicode", None))
+    uflag = pretty_use_unicode(settings.get("use_unicode", None))
     try:
-        pp = PrettyPrinter(profile)
+        pp = PrettyPrinter(settings)
         return pp.doprint(expr)
     finally:
         pretty_use_unicode(uflag)
 
-def pretty_print(expr, use_unicode=None):
+
+def pretty_print(expr, **settings):
     """
     Prints expr in pretty form.
 
     pprint is just a shortcut for this function
     """
-    print pretty(expr, use_unicode)
+    print pretty(expr, **settings)
 
 pprint = pretty_print
+

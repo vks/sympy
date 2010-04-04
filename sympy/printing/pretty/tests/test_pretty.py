@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from sympy import Symbol, Matrix, Integral, log, Rational, Derivative, exp, \
         sqrt, pi, Function, sin, cos, pprint_use_unicode, oo, Eq, Le, \
-        Gt, Ne, Limit, factorial, gamma, conjugate, I, Piecewise, S
+        Gt, Ne, Limit, factorial, gamma, conjugate, I, Piecewise, S, pprint, \
+        Pow, raises
 from sympy.printing.pretty import pretty as xpretty
 
 x = Symbol('x')
@@ -9,9 +10,9 @@ y = Symbol('y')
 th  = Symbol('theta')
 ph  = Symbol('phi')
 
-def pretty(expr):
+def pretty(expr, order=None):
     # ascii-pretty by default
-    return xpretty(expr, use_unicode=False)
+    return xpretty(expr, order=order, use_unicode=False)
 
 def test_pretty_str():
     assert pretty( 'xxx' ) == "'xxx'"
@@ -49,6 +50,8 @@ def test_pretty_basic():
     assert pretty( y*x**-2 ) == 'y \n--\n 2\nx '
     assert pretty( x**Rational(-5,2) ) == ' 1  \n----\n 5/2\nx   '
     assert pretty( (-2)**x ) == '    x\n(-2) '
+    # See issue 1824
+    assert pretty(Pow(3, 1, evaluate=False)) == ' 1\n3 '
 
     # Sums of terms
     assert pretty( (x**2 + x + 1))  in [
@@ -70,6 +73,23 @@ def test_pretty_basic():
     # Check for proper placement of negative sign
     assert pretty( -5*x/(x+10) ) == ' -5*x \n------\n10 + x'
     assert pretty( 1 - Rational(3,2)*(x+1) ) == '       3*x\n-1/2 - ---\n        2 '
+
+def test_pretty_ordering():
+    assert pretty(x**2 + x + 1, order='lex') == ' 2        \nx  + x + 1'
+    assert pretty(x**2 + x + 1, order='rev-lex') == '         2\n1 + x + x '
+
+    assert pretty(1 - x, order='lex') == '-x + 1'
+    assert pretty(1 - x, order='rev-lex') == '1 - x'
+
+    assert pretty(1 - 2*x, order='lex') == '-2*x + 1'
+    assert pretty(1 - 2*x, order='rev-lex') == '1 - 2*x'
+
+    f = 2*x**4 + y**2 - x**2 + y**3
+
+    assert pretty(f, order=None) == ' 2    2    3      4\ny  - x  + y  + 2*x '
+
+    assert pretty(f, order='lex') == '   4    2    3    2\n2*x  - x  + y  + y '
+    assert pretty(f, order='rev-lex') == ' 2    3    2      4\ny  + y  - x  + 2*x '
 
 def test_pretty_relational():
     assert pretty(Eq(x, y)) == 'x = y'
@@ -351,3 +371,17 @@ def test_pretty_no_wrap_line():
 
 def test_pretty_str():
     assert xpretty('a\nb') == 'a\nb'
+
+def test_pprint():
+    import StringIO, sys
+    fd = StringIO.StringIO()
+    sso = sys.stdout
+    sys.stdout = fd
+    try:
+        pprint(pi, use_unicode=False)
+    finally:
+        sys.stdout = sso
+    assert fd.getvalue() == 'pi\n'
+
+def test_settings():
+    raises(TypeError, 'pretty(S(4), method="garbage")')

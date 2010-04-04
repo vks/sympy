@@ -1,8 +1,6 @@
 import sympy
-from sympy.core import Symbol, Wild, S
 from sympy.functions import DiracDelta, Heaviside
 from sympy.solvers import solve
-#from sympy.integrals import Integral
 
 def change_mul(node,x):
     """change_mul(node,x)
@@ -11,7 +9,7 @@ def change_mul(node,x):
        DiracDelta expression.
 
        If no simple DiracDelta expression was found, then all the DiracDelta
-       expressions are simplified(using DiracDelta.simplify).
+       expressions are simplified (using DiracDelta.simplify).
 
        Return: (dirac,nnode)
        Where:
@@ -36,14 +34,15 @@ def change_mul(node,x):
     new_args = []
     dirac = None
     for arg in node.args:
-        if isinstance(arg, DiracDelta) and arg.is_simple(x) and (len(arg.args) <= 1 or arg.args[1]==0):
+        if arg.func == DiracDelta and arg.is_simple(x) \
+                and (len(arg.args) <= 1 or arg.args[1]==0):
             dirac = arg
         else:
             new_args.append(change_mul(arg,x))
     if not dirac:#we didn't find any simple dirac
         new_args = []
         for arg in node.args:
-            if isinstance(arg, DiracDelta):
+            if arg.func == DiracDelta:
                 new_args.append(arg.simplify(x))
             else:
                 new_args.append(change_mul(arg,x))
@@ -52,12 +51,12 @@ def change_mul(node,x):
         else:#if the node didn't change there is nothing to do
             nnode = None
         return (None, nnode)
-    return (dirac,node.__class__(*new_args))
+    return (dirac, node.func(*new_args))
 
 
 def deltaintegrate(f, x):
-    '''The idea for integration is the following:
-    -If we are dealing with a DiracDelta expresion, ie:
+    """The idea for integration is the following:
+    -If we are dealing with a DiracDelta expression, i.e.:
     DiracDelta(g(x)), we try to simplify it.
     If we could simplify it, then we integrate the resulting expression.
     We already know we can integrate a simplified expression, because only
@@ -65,30 +64,30 @@ def deltaintegrate(f, x):
     If we couldn't simplify it, there are two cases:
     1) The expression is a simple expression, then we return the integral
     Taking care if we are dealing with a Derivative or with a proper DiracDelta
-    2) The expression is not simple(ie. DiracDelta(cos(x))), we can do nothing at all
+    2) The expression is not simple(i.e. DiracDelta(cos(x))), we can do nothing at all
 
     -If the node is a multiplication node having a DiracDelta term
     First we expand it.
     If the expansion did work, the we try to integrate the expansion
-    If not, we try to extrat a simple DiracDelta term, then we have two cases
+    If not, we try to extract a simple DiracDelta term, then we have two cases
     1)We have a simple DiracDelta term, so we return the integral
     2)We didn't have a simple term, but we do have an expression with simplified
-    DiracDelta terms, so we integrate this expresion
+    DiracDelta terms, so we integrate this expression
 
-    '''
+    """
     if not f.has(DiracDelta):
         return None
     # g(x) = DiracDelta(h(x))
-    if isinstance(f,DiracDelta):
+    if f.func == DiracDelta:
         h = f.simplify(x)
         if h == f:#can't simplify the expression
-            #FIXME: the second term tells wether is DeltaDirac or Derivative
+            #FIXME: the second term tells whether is DeltaDirac or Derivative
             #For integrating derivatives of DiracDelta we need the chain rule
             if f.is_simple(x):
                 if (len(f.args) <= 1 or f.args[1]==0):
                     return Heaviside(f.args[0])
                 else:
-                    return (DiracDelta(f.args[0],f.args[1]-1)/ f.args[0].as_poly().coeffs[0])
+                    return (DiracDelta(f.args[0],f.args[1]-1)/ f.args[0].as_poly().LC())
         else:#let's try to integrate the simplified expression
             fh = sympy.integrals.integrate(h,x)
             return fh
@@ -108,3 +107,4 @@ def deltaintegrate(f, x):
                 point = solve(dg.args[0],x)[0]
                 return (rest_mult.subs(x,point)*Heaviside(dg.args[0]))
     return None
+

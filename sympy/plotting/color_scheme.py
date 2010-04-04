@@ -1,5 +1,5 @@
 from sympy import Basic, Symbol, symbols, lambdify
-from util import interpolate, rinterpolate, interpolate_color, create_bounds, update_bounds
+from util import interpolate, rinterpolate, create_bounds, update_bounds
 
 class ColorGradient(object):
     colors = [0.4,0.4,0.4], [0.9,0.9,0.9]
@@ -298,4 +298,3 @@ default_color_schemes['zfade4'] = ColorScheme( z, (None, None, z), [ 0.0,  (0.3,
                                                                      0.65, (1.0,0.95, 0.2),
                                                                      0.85, (1.0, 0.7, 0.2),
                                                                      1.0,  (1.0, 0.3, 0.2) ] )
-

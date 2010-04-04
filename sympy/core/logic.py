@@ -18,6 +18,7 @@ def fuzzy_not(v):
 def name_not(k):
     """negate a name
 
+       >>> from sympy.core.logic import name_not
        >>> name_not('zero')
        '!zero'
 
@@ -324,4 +325,3 @@ class Not(Logic):
 Logic.op_2class['&'] = And
 Logic.op_2class['|'] = Or
 Logic.op_2class['!'] = Not
-

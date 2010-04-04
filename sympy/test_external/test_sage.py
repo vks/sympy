@@ -1,8 +1,13 @@
 # This testfile tests SymPy <-> Sage compatibility
-
+#
 # Execute this test inside Sage, e.g. with:
 # sage -python bin/test sympy/test_external/test_sage.py
-
+#
+# This file can be tested by Sage itself by:
+# sage -t sympy/test_external/test_sage.py
+# and if all tests pass, it should be copied (verbatim) to Sage, so that it is
+# automatically doctested by Sage.
+#
 # Don't test any SymPy features here. Just pure interaction with Sage.
 # Always write regular SymPy tests for anything, that can be tested in pure
 # Python (without Sage). Here we test everything, that a user may need when
@@ -44,7 +49,7 @@ def check_expression(expr, var_symbols):
     assert isinstance(e_sympy, sympy.Basic)
 
     # Do the actual checks:
-    assert sympy.sympify(e_sage) == e_sympy
+    assert sympy.S(e_sage) == e_sympy
     assert e_sage == sage.SR(e_sympy)
 
 
@@ -105,6 +110,7 @@ def test_functions():
     check_expression("asin(x)", "x")
     check_expression("acos(x)", "x")
     check_expression("atan(x)", "x")
+    check_expression("atan2(y, x)", "x, y")
     check_expression("acot(x)", "x")
     check_expression("sinh(x)", "x")
     check_expression("cosh(x)", "x")
@@ -125,3 +131,26 @@ def test_issue924():
     i2 = sympy.simplify(i)
     s = sage.SR(i2)
     assert s == (a*log(1+a) - a*log(a) + log(1+a) - 1)/a
+
+# This string contains Sage doctests, that execute all the functions above.
+# When you add a new function, please add it here as well.
+"""
+
+TESTS::
+
+    sage: test_basics()
+    sage: test_basics()
+    sage: test_complex()
+    sage: test_integer()
+    sage: test_real()
+    sage: test_E()
+    sage: test_pi()
+    sage: test_euler_gamma()
+    sage: test_oo()
+    sage: test_NaN()
+    sage: test_Catalan()
+    sage: test_GoldenRation()
+    sage: test_functions()
+    sage: test_issue924()
+
+"""

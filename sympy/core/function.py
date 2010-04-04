@@ -4,26 +4,26 @@ There are two types of functions:
    (in the sense that function can be evaluated).
     e = exp
 2) undefined function with a name but no body. Undefined
-  functions can be defined using a Function class as follows:
-    f = Function('f')
-  (the result will be Function instance)
+   functions can be defined using a Function class as follows:
+       f = Function('f')
+   (the result will be a Function instance)
 3) this isn't implemented yet: anonymous function or lambda function that has
-no name but has body with dummy variables. An anonymous function
-   object creation examples:
-    f = Lambda(x, exp(x)*x)
-    f = Lambda(exp(x)*x)  # free symbols in the expression define the number of arguments
-    f = exp * Lambda(x,x)
+   no name but has body with dummy variables. Examples of anonymous function
+   creation:
+       f = Lambda(x, exp(x)*x)
+       f = Lambda(exp(x)*x)  # free symbols in the expression define the number of arguments
+       f = exp * Lambda(x,x)
 4) isn't implemented yet: composition of functions, like (sin+cos)(x), this
-works in sympycore, but needs to be ported back to SymPy.
+   works in sympy core, but needs to be ported back to SymPy.
 
 
 Example:
-    >>> from sympy import *
-    >>> f = Function("f")
-    >>> x = Symbol("x")
+    >>> import sympy
+    >>> f = sympy.Function("f")
+    >>> from sympy.abc import x
     >>> f(x)
     f(x)
-    >>> print srepr(f(x).func)
+    >>> print sympy.srepr(f(x).func)
     Function('f')
     >>> f(x).args
     (x,)
@@ -201,9 +201,6 @@ class Function(Basic):
                 # Written down as an elif to avoid a super-long line
                 elif isinstance(new.nargs,tuple) and self.nargs in new.nargs:
                     return new(*self.args)
-        obj = self.func._eval_apply_subs(*(self.args + (old,) + (new,)))
-        if obj is not None:
-            return obj
         return Basic._seq_subs(self, old, new)
 
     def _eval_evalf(self, prec):
@@ -490,16 +487,17 @@ class WildFunction(Function, Atom):
         obj.name = name
         return obj
 
-    def matches(pattern, expr, repl_dict={}, evaluate=False):
-        for p,v in repl_dict.items():
-            if p==pattern:
-                if v==expr: return repl_dict
+    def matches(self, expr, repl_dict={}, evaluate=False):
+        if self in repl_dict:
+            if repl_dict[self] == expr:
+                return repl_dict
+            else:
                 return None
-        if pattern.nargs is not None:
-            if not hasattr(expr,'nargs') or pattern.nargs != expr.nargs:
+        if self.nargs is not None:
+            if not hasattr(expr,'nargs') or self.nargs != expr.nargs:
                 return None
         repl_dict = repl_dict.copy()
-        repl_dict[pattern] = expr
+        repl_dict[self] = expr
         return repl_dict
 
     @classmethod
@@ -512,10 +510,10 @@ class WildFunction(Function, Atom):
 
 class Derivative(Basic):
     """
-    Carries out differentation of the given expression with respect to symbols.
+    Carries out differentiation of the given expression with respect to symbols.
 
     expr must define ._eval_derivative(symbol) method that returns
-    the differentation result or None.
+    the differentiation result or None.
 
     Examples:
 
@@ -616,7 +614,8 @@ class Derivative(Basic):
         expr = self.expr
         if hints.get('deep', True):
             expr = expr.doit(**hints)
-        return Derivative(expr, *self.symbols,**{'evaluate': True})
+        hints['evaluate'] = True
+        return Derivative(expr, *self.symbols, **hints)
 
     @property
     def expr(self):
@@ -631,30 +630,27 @@ class Derivative(Basic):
             return new
         return Derivative(*map(lambda x: x._eval_subs(old, new), self.args), **{'evaluate': True})
 
-    def matches(pattern, expr, repl_dict={}, evaluate=False):
+    def matches(self, expr, repl_dict={}, evaluate=False):
         # this method needs a cleanup.
 
-        #print "?   :",pattern, expr, repl_dict, evaluate
-        #if repl_dict:
-        #    return repl_dict
-        for p,v in repl_dict.items():
-            if p==pattern:
-                if v==expr: return repl_dict
+        if self in repl_dict:
+            if repl_dict[self] == expr:
+                return repl_dict
+            else:
                 return None
-        assert isinstance(pattern, Derivative)
         if isinstance(expr, Derivative):
-            if len(expr.symbols) == len(pattern.symbols):
-                    #print "MAYBE:",pattern, expr, repl_dict, evaluate
-                    return Basic.matches(pattern, expr, repl_dict, evaluate)
-        #print "NONE:",pattern, expr, repl_dict, evaluate
+            if len(expr.symbols) == len(self.symbols):
+                    #print "MAYBE:",self, expr, repl_dict, evaluate
+                return Basic.matches(self, expr, repl_dict, evaluate)
+        #print "NONE:",self, expr, repl_dict, evaluate
         return None
-        #print pattern, expr, repl_dict, evaluate
+        #print self, expr, repl_dict, evaluate
         stop
-        if pattern.nargs is not None:
-            if pattern.nargs != expr.nargs:
+        if self.nargs is not None:
+            if self.nargs != expr.nargs:
                 return None
         repl_dict = repl_dict.copy()
-        repl_dict[pattern] = expr
+        repl_dict[self] = expr
         return repl_dict
 
     def _eval_lseries(self, x, x0):
@@ -681,23 +677,20 @@ class Lambda(Function):
     Lambda((x, y, ...), expr).
 
     A simple example:
-        >>> from sympy import Symbol
-        >>> x = Symbol('x')
+        >>> from sympy import Lambda
+        >>> from sympy.abc import x
         >>> f = Lambda(x, x**2)
         >>> f(4)
         16
 
     For multivariate functions, use:
-        >>> x = Symbol('x')
-        >>> y = Symbol('y')
-        >>> z = Symbol('z')
-        >>> t = Symbol('t')
-        >>> f2 = Lambda(x,y,z,t,x+y**z+t**z)
-        >>> f2(1,2,3,4)
+        >>> from sympy.abc import y, z, t
+        >>> f2 = Lambda(x, y, z, t, x + y**z + t**z)
+        >>> f2(1, 2, 3, 4)
         73
 
     Multivariate functions can be curries for partial applications:
-        >>> sum2numbers = Lambda(x,y,x+y)
+        >>> sum2numbers = Lambda(x, y, x+y)
         >>> sum2numbers(1,2)
         3
         >>> plus1 = sum2numbers(1)
@@ -705,9 +698,6 @@ class Lambda(Function):
         4
 
     A handy shortcut for lots of arguments:
-        >>> from sympy import *
-        >>> var('x y z')
-        (x, y, z)
         >>> p = x, y, z
         >>> f = Lambda(p, x + y*z)
         >>> f(*p)
@@ -724,11 +714,6 @@ class Lambda(Function):
         obj = Function.__new__(cls,*args)
         obj.nargs = len(args)-1
         return obj
-
-    @classmethod
-    @deprecated
-    def canonize(cls, *args):
-        return cls.eval(*args)
 
     @classmethod
     def eval(cls,*args):
@@ -751,9 +736,8 @@ class Lambda(Function):
         This supports partial application.
 
         Example:
-            >>> from sympy import Symbol
-            >>> x = Symbol('x')
-            >>> y = Symbol('y')
+            >>> from sympy import Lambda
+            >>> from sympy.abc import x, y
             >>> f = Lambda(x, x**2)
             >>> f.apply(4)
             16
@@ -825,8 +809,8 @@ def diff(f, *symbols, **kwargs):
     and single symbols.
 
     Examples:
-    >>> from sympy import *
-    >>> x, y = symbols('x y')
+    >>> from sympy import sin, cos, Function, diff
+    >>> from sympy.abc import x, y
     >>> f = Function('f')
 
     >>> diff(sin(x), x)
@@ -882,7 +866,7 @@ def expand(e, deep=True, power_base=True, power_exp=True, mul=True, \
     Hints are applied with arbitrary order so your code shouldn't
     depend on the way hints are passed to this method.
 
-    Hints evaluated unless explicity set to False are:
+    Hints evaluated unless explicitly set to False are:
       basic, log, multinomial, mul, power_base, and power_exp
     The following hints are supported but not applied unless set to True:
       complex, func, and trig.
@@ -900,8 +884,8 @@ def expand(e, deep=True, power_base=True, power_exp=True, mul=True, \
     Also see expand_log, expand_mul, expand_complex, expand_trig,
     and expand_func, which are wrappers around those expansion methods.
 
-    >>> from sympy import *
-    >>> x,y = symbols('xy')
+    >>> from sympy import cos, exp
+    >>> from sympy.abc import x, y, z
 
     mul - Distributes multiplication over addition.
     >>> (y*(x + z)).expand(mul=True)
@@ -927,6 +911,7 @@ def expand(e, deep=True, power_base=True, power_exp=True, mul=True, \
     into sums of logs.  Note that these only work if the arguments of the log
     function have the proper assumptions: the arguments must be positive and the
     exponents must be real.
+    >>> from sympy import log, symbols
     >>> log(x**2*y).expand(log=True)
     log(y*x**2)
     >>> x, y = symbols('xy', positive=True)
@@ -938,6 +923,7 @@ def expand(e, deep=True, power_base=True, power_exp=True, mul=True, \
     cos(x)*cos(y) - sin(x)*sin(y)
 
     func - Expand other functions.
+    >>> from sympy import gamma
     >>> gamma(x+1).expand(func=True)
     x*gamma(x)
 
@@ -967,6 +953,7 @@ def expand(e, deep=True, power_base=True, power_exp=True, mul=True, \
     with mul=False first, then run expand_mul if you need further expansion.
 
     Examples:
+    >>> from sympy import expand_log, expand, expand_mul
     >>> x, y, z = symbols('xyz', positive=True)
 
     >> expand(log(x*(y+z))) # could be either one below
@@ -1015,7 +1002,7 @@ def expand_mul(expr, deep=True):
     docstring for more information.
 
     Example:
-    >>> from sympy import *
+    >>> from sympy import symbols, expand_mul, exp, log
     >>> x, y = symbols('xy', positive=True)
     >>> expand_mul(exp(x+y)*(x+y)*log(x*y**2))
     x*exp(x + y)*log(x*y**2) + y*exp(x + y)*log(x*y**2)
@@ -1030,7 +1017,7 @@ def expand_log(expr, deep=True):
     docstring for more information.
 
     Example:
-    >>> from sympy import *
+    >>> from sympy import symbols, expand_log, exp, log
     >>> x, y = symbols('xy', positive=True)
     >>> expand_log(exp(x+y)*(x+y)*log(x*y**2))
     (x + y)*(2*log(y) + log(x))*exp(x + y)
@@ -1045,8 +1032,8 @@ def expand_func(expr, deep=True):
     docstring for more information.
 
     Example:
-    >>> from sympy import *
-    >>> x = Symbol('x')
+    >>> from sympy import expand_func, gamma
+    >>> from sympy.abc import x
     >>> expand_func(gamma(x + 2))
     x*(1 + x)*gamma(x)
 
@@ -1060,8 +1047,8 @@ def expand_trig(expr, deep=True):
     docstring for more information.
 
     Example:
-    >>> from sympy import *
-    >>> x, y = symbols('xy')
+    >>> from sympy import expand_trig, sin, cos
+    >>> from sympy.abc import x, y
     >>> expand_trig(sin(x+y)*(x+y))
     (x + y)*(cos(x)*sin(y) + cos(y)*sin(x))
 
@@ -1075,8 +1062,8 @@ def expand_complex(expr, deep=True):
     docstring for more information.
 
     Example:
-    >>> from sympy import *
-    >>> z = Symbol('z')
+    >>> from sympy import expand_complex, I, im, re
+    >>> from sympy.abc import z
     >>> expand_complex(z**(2*I))
     I*im(z**(2*I)) + re(z**(2*I))
 

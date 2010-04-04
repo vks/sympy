@@ -1,4 +1,4 @@
-"""A functions module, inculdes all the standart functions.
+"""A functions module, includes all the standard functions.
 
 Combinatorial - factorial, fibonacci, harmonic, bernoulli...
 Elementary - hyperbolic, trigonometric, exponential, floor and ceiling, sqrt...
@@ -32,6 +32,7 @@ from special.zeta_functions import dirichlet_eta, zeta
 from special.spherical_harmonics import Ylm, Zlm
 from special.tensor_functions import Dij, Eijk
 from special.delta_functions import DiracDelta, Heaviside
+from special.bsplines import bspline_basis, bspline_basis_set
 
 ln = log
 

@@ -77,6 +77,8 @@ class BasicMeta(BasicType):
     classnamespace = {}
     singleton = {}
 
+    keep_sign = False
+
     def __init__(cls, *args, **kws):
         n = cls.__name__
         c = BasicMeta.classnamespace.get(n)
@@ -241,7 +243,7 @@ class Basic(AssumeMeths):
     Example:
 
     >>> from sympy import symbols, cot
-    >>> x, y = symbols('xy')
+    >>> from sympy.abc import x, y
 
     >>> cot(x).args
     (x,)
@@ -287,6 +289,8 @@ class Basic(AssumeMeths):
     is_Order = False
     is_Derivative = False
     is_Piecewise = False
+    is_Poly = False
+    is_AlgebraicNumber = False
 
     def __new__(cls, *args, **assumptions):
         obj = object.__new__(cls)
@@ -342,7 +346,7 @@ class Basic(AssumeMeths):
         Example:
 
         >>> from sympy import Symbol
-        >>> x = Symbol("x")
+        >>> from sympy.abc import x
         >>> x.assumptions0
         {}
         >>> x = Symbol("x", positive=True)
@@ -377,12 +381,12 @@ class Basic(AssumeMeths):
 
         Example:
 
-        >>> x = Symbol("x")
+        >>> from sympy.abc import x
         >>> x.new("x")
         x
 
         """
-        obj = type(self) (*args, **self.assumptions0)
+        obj = self.func(*args, **self.assumptions0)
         return obj
 
 
@@ -450,8 +454,8 @@ class Basic(AssumeMeths):
            algorithms where uniform handling of int, long values and
            and sympy expressions is required.
 
-           >>> from sympy import *
-           >>> x,y = symbols('xy')
+           >>> from sympy import S
+           >>> from sympy.abc import x, y
 
            >>> bool(0)
            False
@@ -481,8 +485,7 @@ class Basic(AssumeMeths):
 
         Example:
 
-        >>> from sympy import *
-        >>> x, y = symbols("x y")
+        >>> from sympy.abc import x, y
         >>> x.compare(y)
         -1
         >>> x.compare(x)
@@ -533,7 +536,7 @@ class Basic(AssumeMeths):
     @staticmethod
     def compare_pretty(a, b):
         """
-        Is a>b in the sense of ordering in printing?
+        Is a > b in the sense of ordering in printing?
 
         yes ..... return 1
         no ...... return -1
@@ -549,12 +552,13 @@ class Basic(AssumeMeths):
 
         Example:
 
-        >>> x = Symbol("x")
-        >>> Basic.compare_pretty(x, x**2)
+        >>> from sympy.abc import x
+        >>> from sympy import Basic
+        >>> Basic._compare_pretty(x, x**2)
         -1
-        >>> Basic.compare_pretty(x**2, x**2)
+        >>> Basic._compare_pretty(x**2, x**2)
         0
-        >>> Basic.compare_pretty(x**3, x**2)
+        >>> Basic._compare_pretty(x**3, x**2)
         1
 
         """
@@ -648,33 +652,31 @@ class Basic(AssumeMeths):
 
     @_sympifyit('other', False) # sympy >  other
     def __lt__(self, other):
-        #return sympify(other) > self
         dif = self - other
-        if not dif.is_negative is None:
+        if dif.is_negative != dif.is_nonnegative:
             return dif.is_negative
         return StrictInequality(self, other)
 
     @_sympifyit('other', True)  # sympy >  other
     def __gt__(self, other):
         dif = self - other
-        if not dif.is_negative is None:
+        if dif.is_positive !=  dif.is_nonpositive:
             return dif.is_positive
         return StrictInequality(other, self)
-        #return sympify(other) < self
 
     @_sympifyit('other', False) # sympy >  other
     def __le__(self, other):
         dif = self - other
-        if not dif.is_nonpositive is None:
+        if dif.is_nonpositive != dif.is_positive:
             return dif.is_nonpositive
         return Inequality(self, other)
 
     @_sympifyit('other', True)  # sympy >  other
     def __ge__(self, other):
         dif = self - other
-        if not dif.is_nonnegative is None:
+        if dif.is_nonnegative != dif.is_negative:
             return dif.is_nonnegative
-        return sympify(other) <= self
+        return Inequality(other, self)
 
 
     # ***************
@@ -768,8 +770,8 @@ class Basic(AssumeMeths):
 
            Examples::
 
-           >>> from sympy import *
-           >>> x,y = symbols('xy')
+           >>> from sympy import I, pi, sin
+           >>> from sympy.abc import x, y
            >>> list((1+x+2*sin(y+I*pi)).atoms())
            [y, I, 2, x, 1, pi]
 
@@ -778,6 +780,7 @@ class Basic(AssumeMeths):
 
            Examples::
 
+           >>> from sympy import Number, NumberSymbol, Symbol
            >>> sorted((1+x+2*sin(y+I*pi)).atoms(Symbol))
            [x, y]
 
@@ -803,6 +806,7 @@ class Basic(AssumeMeths):
            of sympy atom, while type(S(2)) is type Integer and will find all
            integers in an expression::
 
+           >>> from sympy import S
            >>> sorted((1+x+2*sin(y+I*pi)).atoms(S(1)))
            [1]
 
@@ -814,6 +818,7 @@ class Basic(AssumeMeths):
            and those types of "atoms" as found in scanning the arguments of the
            expression nonrecursively::
 
+           >>> from sympy import Function, Mul
            >>> sorted((1+x+2*sin(y+I*pi)).atoms(Function))
            [sin(y + pi*I)]
 
@@ -862,8 +867,8 @@ class Basic(AssumeMeths):
     def is_number(self):
         """Returns True if 'self' is a number.
 
-           >>> from sympy import *
-           >>> x,y = symbols('xy')
+           >>> from sympy import log
+           >>> from sympy.abc import x, y
 
            >>> x.is_number
            False
@@ -892,7 +897,7 @@ class Basic(AssumeMeths):
 
         Example:
 
-        >>> x = Symbol("x")
+        >>> from sympy.abc import x
         >>> a = 2*x
         >>> a.func
         <class 'sympy.core.mul.Mul'>
@@ -913,7 +918,7 @@ class Basic(AssumeMeths):
         Example:
 
         >>> from sympy import symbols, cot
-        >>> x, y = symbols('xy')
+        >>> from sympy.abc import x, y
 
         >>> cot(x).args
         (x,)
@@ -940,7 +945,7 @@ class Basic(AssumeMeths):
 
         Example:
 
-        >>> x = Symbol("x")
+        >>> from sympy.abc import x
         >>> a = 2*x
         >>> a.iter_basic_args()
         <tupleiterator object at 0x...>
@@ -958,7 +963,7 @@ class Basic(AssumeMeths):
         Example:
 
         >>> from sympy import symbols, sin
-        >>> x, y = symbols('xy')
+        >>> from sympy.abc import x, y
 
         >>> (x/y).is_rational_function()
         True
@@ -992,26 +997,17 @@ class Basic(AssumeMeths):
         else:
             return self._eval_is_polynomial(syms)
 
-    def as_poly(self, *symbols, **flags):
-        """Converts 'self' to a polynomial or returns None.
+    def as_poly(self, *gens, **args):
+        """Converts `self` to a polynomial or returns `None`.
 
-           When constructing a polynomial an exception will be raised in
-           case the input expression is not convertible to a polynomial.
-           There are situations when it is easier (simpler or prettier)
-           to receive None on failure.
-
-           If no symbols were given and 'self' isn't already a polynomial
-           then all  available symbols will be collected and used to form
-           a new polynomial.
-
-           >>> from sympy import *
-           >>> x,y = symbols('xy')
+           >>> from sympy import Poly, sin
+           >>> from sympy.abc import x, y
 
            >>> print (x**2 + x*y).as_poly()
-           Poly(x**2 + x*y, x, y)
+           Poly(x**2 + x*y, x, y, domain='ZZ')
 
            >>> print (x**2 + x*y).as_poly(x, y)
-           Poly(x**2 + x*y, x, y)
+           Poly(x**2 + x*y, x, y, domain='ZZ')
 
            >>> print (x**2 + sin(y)).as_poly(x, y)
            None
@@ -1020,21 +1016,20 @@ class Basic(AssumeMeths):
         from sympy.polys import Poly, PolynomialError
 
         try:
-            if not symbols:
-                if isinstance(self, Poly):
-                    return self
-                else:
-                    symbols = sorted(self.atoms(Symbol))
+            poly = Poly(self, *gens, **args)
 
-            return Poly(self, *symbols, **flags)
+            if not poly.is_Poly:
+                return None
+            else:
+                return poly
         except PolynomialError:
             return None
 
     def as_basic(self):
         """Converts polynomial to a valid sympy expression.
 
-           >>> from sympy import *
-           >>> x,y = symbols('xy')
+           >>> from sympy import sin
+           >>> from sympy.abc import x, y
 
            >>> p = (x**2 + x*y).as_poly(x, y)
 
@@ -1058,8 +1053,8 @@ class Basic(AssumeMeths):
 
         Examples:
 
-        >>> from sympy import *
-        >>> x,y = symbols('xy')
+        >>> from sympy import pi
+        >>> from sympy.abc import x, y
         >>> (1+x*y).subs(x, pi)
         1 + pi*y
         >>> (1+x*y).subs({x:pi, y:2})
@@ -1090,9 +1085,10 @@ class Basic(AssumeMeths):
         return self._eval_subs(old, new)
 
     def _eval_subs(self, old, new):
-        if self==old:
+        if self == old:
             return new
-        return self
+        else:
+            return self.func(*[arg._eval_subs(old, new) for arg in self.args])
 
     def _subs_list(self, sequence):
         """
@@ -1101,8 +1097,7 @@ class Basic(AssumeMeths):
 
         Examples:
 
-        >>> from sympy import *
-        >>> x, y = symbols('xy')
+        >>> from sympy.abc import x, y
         >>> (x+y)._subs_list( [(x, 3),     (y, x**2)] )
         3 + x**2
         >>> (x+y)._subs_list( [(y, x**2),  (x, 3)   ] )
@@ -1129,10 +1124,10 @@ class Basic(AssumeMeths):
            gives only partial order and all asymptotically faster
            fail (depending on the initial order).
 
-           >>> from sympy import *
-           >>> x, y = symbols('xy')
+           >>> from sympy import sqrt, sin, cos, exp
+           >>> from sympy.abc import x, y
 
-           >>> a,b,c,d,e = symbols('abcde')
+           >>> from sympy.abc import a, b, c, d, e
 
            >>> A = (sqrt(sin(2*x)), a)
            >>> B = (sin(2*x), b)
@@ -1171,10 +1166,10 @@ class Basic(AssumeMeths):
             args = self.args
         else:
             args = (self.func,)+self
-        return self.__class__(*[s.subs(old, new) for s in args])
+        return self.func(*[s.subs(old, new) for s in args])
 
     def __contains__(self, what):
-        if self == what or self.is_Function and self.func == what: return True
+        if self == what or self.is_Function and self.func is what: return True
         for x in self._args:
             # x is not necessarily of type Basic and so 'x in x == True'
             # may not hold.
@@ -1193,8 +1188,8 @@ class Basic(AssumeMeths):
     def has_any_symbols(self, *syms):
         """Return True if 'self' has any of the symbols.
 
-           >>> from sympy import *
-           >>> x,y,z = symbols('xyz')
+           >>> from sympy import sin
+           >>> from sympy.abc import x, y, z
 
            >>> (x**2 + sin(x*y)).has_any_symbols(z)
            False
@@ -1247,8 +1242,8 @@ class Basic(AssumeMeths):
     def has_all_symbols(self, *syms):
         """Return True if 'self' has all of the symbols.
 
-           >>> from sympy import *
-           >>> x,y,z = symbols('xyz')
+           >>> from sympy import sin
+           >>> from sympy.abc import x, y, z
 
            >>> (x**2 + sin(x*y)).has_all_symbols(x, y)
            True
@@ -1287,7 +1282,7 @@ class Basic(AssumeMeths):
         Return True if self has any of the patterns.
 
         Example:
-        >>> x = Symbol("x")
+        >>> from sympy.abc import x
         >>> (2*x).has(x)
         True
         >>> (2*x/x).has(x)
@@ -1304,7 +1299,7 @@ class Basic(AssumeMeths):
             raise TypeError("has() requires at least 1 argument (got none)")
         p = sympify(patterns[0])
         if p.is_Atom and not isinstance(p, Wild):
-            return p in self.atoms(p.__class__)
+            return p in self.atoms(p.func)
         if isinstance(p, BasicType):
             return bool(self.atoms(p))
         if p.matches(self) is not None:
@@ -1316,7 +1311,7 @@ class Basic(AssumeMeths):
 
     def _eval_interval(self, x, a, b):
         """
-        Returns evaluation over an interval.  For most funtions this is:
+        Returns evaluation over an interval.  For most functions this is:
 
         self.subs(x, b) - self.subs(x, a),
 
@@ -1365,10 +1360,6 @@ class Basic(AssumeMeths):
     def _eval_eq_nonzero(self, other):
         return
 
-    @classmethod
-    def _eval_apply_subs(cls, *args):
-        return
-
     def _eval_conjugate(self):
         if self.is_real:
             return self
@@ -1395,8 +1386,7 @@ class Basic(AssumeMeths):
                 if x.is_Order:
                     return x
 
-    #@classmethod
-    def matches(pattern, expr, repl_dict={}, evaluate=False):
+    def matches(self, expr, repl_dict={}, evaluate=False):
         """
         Helper method for match() - switches the pattern and expr.
 
@@ -1408,64 +1398,23 @@ class Basic(AssumeMeths):
           {x_: -a/b}
 
         """
-
-        # weed out negative one prefixes
-        sign = 1
-        if pattern.is_Mul and pattern.args[0] == -1:
-            pattern = -pattern; sign = -sign
-        if expr.is_Mul and expr.args[0] == -1:
-            expr = -expr; sign = -sign
-
         if evaluate:
-            pat = pattern
-            for old,new in repl_dict.items():
-                pat = pat.subs(old, new)
-            if pat!=pattern:
-                return pat.matches(expr, repl_dict)
+            return self.subs(repl_dict).matches(expr, repl_dict)
+
         expr = sympify(expr)
-        if not isinstance(expr, pattern.__class__):
-            # if we can omit the first factor, we can match it to sign * one
-            if pattern.is_Mul and Mul(*pattern.args[1:]) == expr:
-               return pattern.args[0].matches(Rational(sign), repl_dict, evaluate)
-            # two-factor product: if the 2nd factor matches, the first part must be sign * one
-            if pattern.is_Mul and len(pattern.args) == 2:
-               dd = pattern.args[1].matches(expr, repl_dict, evaluate)
-               if dd == None: return None
-               dd = pattern.args[0].matches(Rational(sign), dd, evaluate)
-               return dd
+        if not isinstance(expr, self.__class__):
             return None
 
-        if len(pattern.args)==0:
-            if pattern==expr:
-                return repl_dict
+        if self == expr:
+            return repl_dict
+        if len(self.args) != len(expr.args):
             return None
+
         d = repl_dict.copy()
-
-        # weed out identical terms
-        pp = list(pattern.args)
-        ee = list(expr.args)
-        for p in pattern.args:
-          for e in expr.args:
-            if e == p:
-              if e in ee: ee.remove(e)
-              if p in pp: pp.remove(p)
-
-        # only one symbol left in pattern -> match the remaining expression
-        if len(pp) == 1 and isinstance(pp[0], Wild):
-          if len(ee) == 1: d[pp[0]] = sign * ee[0]
-          else: d[pp[0]] = sign * (type(expr)(*ee))
-          return d
-
-        if len(ee) != len(pp):
-            return None
-
-        i = 0
-        for p,e in zip(pp, ee):
-            if i == 0 and sign != 1:
-              try: e = sign * e
-              except TypeError: return None
-            d = p.matches(e, d, evaluate=not i)
-            i += 1
+        for arg, other_arg in zip(self.args, expr.args):
+            if arg == other_arg:
+                continue
+            d = arg.subs(d).matches(other_arg, d)
             if d is None:
                 return None
         return d
@@ -1483,8 +1432,8 @@ class Basic(AssumeMeths):
 
         Example:
 
-        >>> from sympy import symbols
-        >>> x, y = symbols("x y")
+        >>> from sympy import symbols, Wild
+        >>> from sympy.abc import x, y
         >>> p = Wild("p")
         >>> q = Wild("q")
         >>> r = Wild("r")
@@ -1529,10 +1478,12 @@ class Basic(AssumeMeths):
         """ Return the number of operations in expressions.
 
         Examples:
+        >>> from sympy.abc import a, b, x
+        >>> from sympy import sin
         >>> (1+a+b**2).count_ops()
-        POW + 2 * ADD
+        POW + 2*ADD
         >>> (sin(x)*x+sin(x)**2).count_ops()
-        ADD + MUL + POW + 2 * SIN
+        2 + ADD + MUL + POW
 
         """
         return Integer(len(self)-1) + sum([t.count_ops(symbolic=symbolic) for t in self])
@@ -1543,8 +1494,8 @@ class Basic(AssumeMeths):
            evaluated recursively, unless some species were excluded via 'hints'
            or unless the 'deep' hint was set to 'False'.
 
-           >>> from sympy import *
-           >>> x, y = symbols('xy')
+           >>> from sympy import Integral
+           >>> from sympy.abc import x, y
 
            >>> 2*Integral(x, x)
            2*Integral(x, x)
@@ -1636,8 +1587,8 @@ class Basic(AssumeMeths):
            defined called 'deep'. When 'deep' is set to False it will
            forbid functions to rewrite their contents.
 
-           >>> from sympy import *
-           >>> x, y = symbols('xy')
+           >>> from sympy import sin, exp, I
+           >>> from sympy.abc import x, y
 
            >>> sin(x).rewrite(sin, exp)
            -I*(exp(I*x) - exp(-I*x))/2
@@ -1646,22 +1597,8 @@ class Basic(AssumeMeths):
         if self.is_Atom or not args:
             return self
         else:
-            pattern, rule = args[:-1], args[-1]
-
-            if not isinstance(rule, str):
-
-                if rule == C.tan:
-                    rule = "tan"
-                elif rule == C.exp:
-                    rule = "exp"
-                elif isinstance(rule, FunctionClass):   # new-style functions
-                    #print rule
-                    rule = rule.__name__  # XXX proper attribute for name?
-                    #print rule
-                else:
-                    rule = str(rule)
-
-            rule = '_eval_rewrite_as_' + rule
+            pattern = args[:-1]
+            rule = '_eval_rewrite_as_' + str(args[-1])
 
             if not pattern:
                 return self._eval_rewrite(None, rule, **hints)
@@ -1688,7 +1625,7 @@ class Basic(AssumeMeths):
         Example:
 
         >>> from sympy import symbols
-        >>> x, y, z = symbols('x y z')
+        >>> from sympy.abc import x, y, z
         >>> (3+2*x+4*x**2).coeff(1)
         >>> (3+2*x+4*x**2).coeff(x)
         2
@@ -1715,7 +1652,7 @@ class Basic(AssumeMeths):
             return
 
         if expand:
-            self = self.expand() # collect expects it's arguments in expanded form
+            self = self.expand() # collect expects its arguments in expanded form
         result = collect(self, x, evaluate=False, exact=True)
         if x in result:
             return result[x]
@@ -1728,8 +1665,8 @@ class Basic(AssumeMeths):
            of 'expr' and 'expr'-free coefficient. If such separation
            is not possible it will return None.
 
-           >>> from sympy import *
-           >>> x, y = symbols('xy')
+           >>> from sympy import E, pi, sin, I
+           >>> from sympy.abc import x, y
 
            >>> E.as_coefficient(E)
            1
@@ -1771,8 +1708,8 @@ class Basic(AssumeMeths):
            dependent on them in the other. Both parts are valid
            SymPy expressions.
 
-           >>> from sympy import *
-           >>> x, y = symbols('xy')
+           >>> from sympy import sin, cos
+           >>> from sympy.abc import x, y
 
            >>> (2*x*sin(x)+y+x).as_independent(x)
            (y, x + 2*x*sin(x))
@@ -1816,14 +1753,14 @@ class Basic(AssumeMeths):
            functions and get exactly the same results as with
            a single call to this function.
 
-           >>> from sympy import *
+           >>> from sympy import symbols, I
 
            >>> x, y = symbols('xy', real=True)
 
            >>> (x + y*I).as_real_imag()
            (x, y)
 
-           >>> z, w = symbols('zw')
+           >>> from sympy.abc import z, w
 
            >>> (z + w*I).as_real_imag()
            (-im(w) + re(z), im(z) + re(w))
@@ -1904,7 +1841,7 @@ class Basic(AssumeMeths):
            c * something in a nice way, i.e. preserving the properties
            of arguments of self.
 
-           >>> from sympy import *
+           >>> from sympy import symbols, Rational
 
            >>> x, y = symbols('xy', real=True)
 
@@ -2024,7 +1961,7 @@ class Basic(AssumeMeths):
            something + c in a nice way, i.e. preserving the properties
            of arguments of self.
 
-           >>> from sympy import *
+           >>> from sympy import symbols
 
            >>> x, y = symbols('xy', real=True)
 
@@ -2114,14 +2051,13 @@ class Basic(AssumeMeths):
            (-e).could_extract_minus_sign()} must be {True, False}.
 
            >>> from sympy import *
-
            >>> x, y, z = symbols("xyz")
-
            >>> (x-y).could_extract_minus_sign() != (y-x).could_extract_minus_sign()
            True
 
            When an expression is an Add and there is a number as one of the terms
            then the value returned is based on the sign of that number.
+
            >>> (-1-x).could_extract_minus_sign()
            True
            >>> (-1-x-y).could_extract_minus_sign()
@@ -2229,13 +2165,13 @@ class Basic(AssumeMeths):
         # Number + Number*I is also fine
         re, im = v.as_real_imag()
         if allow_ints and re.is_Integer:
-            re = mpmath.libmpf.from_int(re.p)
+            re = mpmath.libmp.from_int(re.p)
         elif re.is_Real:
             re = re._mpf_
         else:
             raise ValueError(errmsg)
         if allow_ints and im.is_Integer:
-            im = mpmath.libmpf.from_int(im.p)
+            im = mpmath.libmp.from_int(im.p)
         elif im.is_Real:
             im = im._mpf_
         else:
@@ -2337,14 +2273,14 @@ class Basic(AssumeMeths):
         Calculates a generalized series expansion.
 
         nseries calculates "n" terms in the innermost expressions and then
-        builds up the final series just by "cross-mutliplying" everything out.
+        builds up the final series just by "cross-multiplying" everything out.
 
         Advantage -- it's fast, because we don't have to determine how many
         terms we need to calculate in advance.
 
-        Disadvantage -- you may endup with less terms than you may have
-        expected, but the O(x**n) term appended will always be correct, so the
-        result is correct, but maybe shorter.
+        Disadvantage -- you may end up with less terms than you may have
+        expected, but the O(x**n) term appended will always be correct and
+        so the result, though perhaps shorter, will also be correct.
 
         See also lseries().
         """
@@ -2352,7 +2288,7 @@ class Basic(AssumeMeths):
 
     def _eval_nseries(self, x, x0, n):
         """
-        This is a method that should be overriden in subclasses. Users should
+        This is a method that should be overridden in subclasses. Users should
         never call this method directly (use .nseries() instead), so you don't
         have to write docstrings for _eval_nseries().
         """
@@ -2371,11 +2307,11 @@ class Basic(AssumeMeths):
 
         Example:
 
-        >>> x = Symbol("x")
+        >>> from sympy.abc import x
         >>> (1+x+x**2).as_leading_term(x)
         1
         >>> (1/x**2+x+x**2).as_leading_term(x)
-        1/x**2
+        x**(-2)
 
         Note:
 
@@ -2421,7 +2357,7 @@ class Basic(AssumeMeths):
 
         Example:
 
-        >>> x = Symbol("x")
+        >>> from sympy.abc import x
         >>> (1+x+x**2).leadterm(x)
         (1, 0)
         >>> (1/x**2+x+x**2).leadterm(x)
@@ -2439,6 +2375,17 @@ class Basic(AssumeMeths):
             return c,e
         raise ValueError("cannot compute leadterm(%s, %s), got c=%s" % (self, x, c))
 
+    def as_Add(self):
+        """Returns `self` as it was `Add` instance. """
+        return [self]
+
+    def as_Mul(self):
+        """Returns `self` as it was `Mul` instance. """
+        return [self]
+
+    def as_Pow(self):
+        """Returns `self` as it was `Pow` instance. """
+        return (self, S.One)
 
     ##########################################################################
     ##################### END OF BASIC CLASS #################################
@@ -2460,10 +2407,16 @@ class Atom(Basic):
         if self==s: return S.One
         return S.Zero
 
-    def pattern_match(pattern, expr, repl_dict):
-        if pattern==expr:
+    def matches(self, expr, repl_dict, evaluate=False):
+        if self == expr:
             return repl_dict
         return None
+
+    def _eval_subs(self, old, new):
+        if self == old:
+            return new
+        else:
+            return self
 
     def as_numer_denom(self):
         return self, S.One
@@ -2592,4 +2545,4 @@ from power import Pow
 from add import Add
 from relational import Inequality, StrictInequality
 from function import FunctionClass, Derivative
-from numbers import Rational, Integer
+from numbers import Integer

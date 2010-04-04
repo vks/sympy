@@ -1,5 +1,5 @@
 from sympy import abc, Function, Symbol, Wild, Derivative, sin, cos, Real, \
-        Rational, exp, I, Integer, diff, Mul, var, oo, S, Add
+        Rational, exp, I, Integer, diff, Mul, var, oo, S, Add, Poly
 from sympy.utilities.pytest import XFAIL
 
 
@@ -110,6 +110,9 @@ def test_mul():
     e = exp(x)
     assert e.match(x**p*exp(x*q)) == {p: 0, q: 1}
 
+    e = I*Poly(x, x)
+    assert e.match(I*p) == {p: Poly(x, x)}
+
 def test_complex():
     a,b,c = map(Symbol, 'abc')
     x,y = map(Wild, 'xy')
@@ -217,9 +220,9 @@ def test_match_bug2():
     assert (p+q+r).subs(res) == x+y
 
 def test_match_bug3():
-     x,a,b = map(Symbol, 'xab')
-     p = Wild('p')
-     assert (b*x*exp(a*x)).match(x*exp(p*x)) == None
+    x,a,b = map(Symbol, 'xab')
+    p = Wild('p')
+    assert (b*x*exp(a*x)).match(x*exp(p*x)) == None
 
 def test_match_bug4():
     x = Symbol('x')
@@ -340,4 +343,3 @@ def test_combine_inverse():
     assert Mul._combine_inverse(oo*I*y, oo*I) == y
     assert Add._combine_inverse(oo, oo) == S(0)
     assert Add._combine_inverse(oo*I, oo*I) == S(0)
-

@@ -1,4 +1,3 @@
-
 from basic import Basic
 from sympify import _sympify
 from cache import cacheit
@@ -14,6 +13,7 @@ def integer_nthroot(y, n):
     and a boolean indicating whether the result is exact (that is,
     whether x**n == y).
 
+    >>> from sympy import integer_nthroot
     >>> integer_nthroot(16,2)
     (4, True)
     >>> integer_nthroot(26,2)
@@ -25,7 +25,7 @@ def integer_nthroot(y, n):
     if y in (0, 1): return y, True
     if n == 1: return y, True
     if n == 2:
-        x, rem = mpmath.libmpf.sqrtrem(y)
+        x, rem = mpmath.libmp.sqrtrem(y)
         return int(x), not rem
     if n > y: return 1, False
     # Get initial estimate for Newton's method. Care must be taken to
@@ -203,10 +203,11 @@ class Pow(Basic):
                 return True
 
     def _eval_subs(self, old, new):
-        if self==old: return new
-        if isinstance(old, self.__class__) and self.base==old.base:
-            coeff1,terms1 = self.exp.as_coeff_terms()
-            coeff2,terms2 = old.exp.as_coeff_terms()
+        if self == old:
+            return new
+        if old.func is self.func and self.base == old.base:
+            coeff1, terms1 = self.exp.as_coeff_terms()
+            coeff2, terms2 = old.exp.as_coeff_terms()
             if terms1==terms2: return new ** (coeff1/coeff2) # (x**(2*y)).subs(x**(3*y),z) -> z**(2/3*y)
         if old.func is C.exp:
             coeff1,terms1 = old.args[0].as_coeff_terms()
@@ -308,7 +309,20 @@ class Pow(Basic):
         else:
             result = None
 
-        if exp.is_Integer and exp.p > 0 and base.is_Add:
+        if exp.is_Rational and exp.p > 0 and base.is_Add:
+            if not exp.is_Integer:
+                n = Integer(exp.p // exp.q)
+
+                if not n:
+                    return base**exp
+                else:
+                    radical, result = Pow(base, exp - n), []
+
+                    for term in Pow(base, n)._eval_expand_multinomial(deep=False).as_Add():
+                        result.append(term*radical)
+
+                    return Add(*result)
+
             n = int(exp)
 
             if base.is_commutative:
@@ -380,8 +394,8 @@ class Pow(Basic):
                 #    b[k] = Integer(expansion_dict[k])
                 #return Poly(b, *p).as_basic()
 
-                from sympy.polys.polynomial import multinomial_as_basic
-                result = multinomial_as_basic(expansion_dict, *p)
+                from sympy.polys.polyutils import basic_from_dict
+                result = basic_from_dict(expansion_dict, *p)
                 return result
             else:
                 if n == 2:
@@ -389,11 +403,11 @@ class Pow(Basic):
                 else:
                     multi = (base**(n-1))._eval_expand_multinomial(deep=False)
                     if multi.is_Add:
-                        return Add(*[f*g for f in base.args for g in base.args])
+                        return Add(*[f*g for f in base.args for g in multi.args])
                     else:
                         return Add(*[f*multi for f in base.args])
-        elif exp.is_Integer and exp.p < 0 and base.is_Add:
-            return 1 / Pow(base, -exp.p)._eval_expand_multinomial(deep=False)
+        elif exp.is_Rational and exp.p < 0 and base.is_Add and abs(exp.p) > exp.q:
+            return 1 / Pow(base, -exp)._eval_expand_multinomial(deep=False)
         elif exp.is_Add and base.is_Number:
             #  a + b      a  b
             # n      --> n  n  , where n, a, b are Numbers
@@ -531,13 +545,9 @@ class Pow(Basic):
         # unprocessed Real and NumberSymbol
         return self, S.One
 
-    def matches(pattern, expr, repl_dict={}, evaluate=False):
+    def matches(self, expr, repl_dict={}, evaluate=False):
         if evaluate:
-            pat = pattern
-            for old,new in repl_dict.items():
-                pat = pat.subs(old, new)
-            if pat!=pattern:
-                return pat.matches(expr, repl_dict)
+            return self.subs(repl_dict).matches(expr, repl_dict)
 
         expr = _sympify(expr)
         b, e = expr.as_base_exp()
@@ -545,18 +555,18 @@ class Pow(Basic):
         # special case, pattern = 1 and expr.exp can match to 0
         if expr is S.One:
             d = repl_dict.copy()
-            d = pattern.exp.matches(S.Zero, d, evaluate=False)
+            d = self.exp.matches(S.Zero, d)
             if d is not None:
                 return d
 
         d = repl_dict.copy()
-        d = pattern.base.matches(b, d, evaluate=False)
+        d = self.base.matches(b, d)
         if d is None:
             return None
 
-        d = pattern.exp.matches(e, d, evaluate=True)
+        d = self.exp.subs(d).matches(e, d)
         if d is None:
-            return Basic.matches(pattern, expr, repl_dict, evaluate)
+            return Basic.matches(self, expr, repl_dict, evaluate)
         return d
 
     def _eval_nseries(self, x, x0, n):
@@ -595,7 +605,7 @@ class Pow(Basic):
                 if o.is_Pow:
                     return o.args[1]
                 n, d = o.as_numer_denom()
-                if isinstance(d, log):
+                if d.func is log:
                     # i.e. o = x**2/log(x)
                     if n.is_Symbol:
                         return Integer(1)
@@ -764,8 +774,12 @@ class Pow(Basic):
     def _sage_(self):
         return self.args[0]._sage_() ** self.args[1]._sage_()
 
+    def as_Pow(self):
+        """Returns `self` as it was `Pow` instance. """
+        return (self.base, self.exp)
 
 from basic import Basic, S, C
 from add import Add
 from numbers import Integer
 from mul import Mul
+

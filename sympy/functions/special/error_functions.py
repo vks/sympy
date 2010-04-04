@@ -1,9 +1,7 @@
-
-from sympy.core.basic import Basic, S, C, sympify
+from sympy.core.basic import S, C, sympify
 from sympy.core.function import Function
 from sympy.functions.elementary.miscellaneous import sqrt
 from sympy.core.cache import cacheit
-from sympy.utilities.decorator import deprecated
 
 ###############################################################################
 ################################ ERROR FUNCTION ###############################
@@ -18,15 +16,6 @@ class erf(Function):
             return 2*C.exp(-self.args[0]**2)/sqrt(S.Pi)
         else:
             raise ArgumentIndexError(self, argindex)
-
-    @classmethod
-    def _eval_apply_subs(cls, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
 
     @classmethod
     def eval(cls, arg):

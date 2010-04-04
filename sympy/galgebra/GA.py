@@ -13,8 +13,8 @@ The relevant references for this module are:
     3. Sympy Tutorial, http://docs.sympy.org/
 """
 import sys
-import os, string, types, copy
-import numpy,sympy
+import types
+import numpy, sympy
 import re as regrep
 import sympy.galgebra.latex_ex
 
@@ -228,7 +228,7 @@ def dualsort(lst1, lst2):
 
 def cp(A,B):
     """
-    Calculates the comutator product (A*B-B*A)/2 for
+    Calculates the commutator product (A*B-B*A)/2 for
     the objects A and B.
     """
     return(HALF*(A*B-B*A))
@@ -277,7 +277,7 @@ def sub_base(k,base):
     """
     If base is a list of sorted integers [i_1,...,i_R] then sub_base returns
     a list with the k^th element removed. Note that k=0 removes the first
-    element.  The is no test to see if k is in the range of the list.
+    element.  There is no test to see if k is in the range of the list.
     """
     n = len(base)
     if n == 1:
@@ -292,8 +292,8 @@ def sub_base(k,base):
 def magnitude(vector):
     """
     Calculate magnitude of vector containing trig expressions
-    and simplify.  This is a hack because of way sign of
-    magsq is determined and because of the way absoluted
+    and simplify.  This is a hack because of way he sign of
+    magsq is determined and because of the way that absolute
     values are removed.
     """
     magsq = sympy.expand((vector|vector)())
@@ -308,7 +308,7 @@ def magnitude(vector):
 
 def LaTeX_lst(lst,title=''):
     """
-    Ouput a list in LaTeX format.
+    Output a list in LaTeX format.
     """
     if title != '':
         LaTeX(title)
@@ -349,7 +349,7 @@ def vector_fct(Fstr,x):
     """
     Create a list of functions of arguments x.  One function is
     created for each variable in x.  Fstr is a string that is
-    the base name of each function while each fuction in the
+    the base name of each function while each function in the
     list is given the name Fstr+'__'+str(x[ix]) so that if
     Fstr = 'f' and str(x[1]) = 'theta' then the LaTeX output
     of the second element in the output list would be 'f^{\theta}'.
@@ -405,7 +405,7 @@ class MV(object):
     @staticmethod
     def pad_zeros(value,n):
         """
-        Pad list with zeros to lenght n. If length is > n
+        Pad list with zeros to length n. If length is > n
         truncate list.  Return padded list.
         """
         nvalue = len(value)
@@ -588,8 +588,8 @@ class MV(object):
     @staticmethod
     def reduce_basis(blst):
         """
-        Repetively applies reduce_basis_loop to basis
-        product representation untill normal form is
+        Repetitively applies reduce_basis_loop to basis
+        product representation until normal form is
         realized.  See reference 5 section 3.
         """
         if blst == []:
@@ -695,7 +695,7 @@ class MV(object):
     def str_rep(mv):
         """
          Converts internal representation of a multivector to a string
-         for outputing.  If lst_mode = 1, str_rep outputs a list of
+         for outputting.  If lst_mode = 1, str_rep outputs a list of
          strings where each string contains one multivector coefficient
          concatenated with the corresponding base or blade symbol.
 
@@ -751,7 +751,7 @@ class MV(object):
          Converts internal representation of a multivector to a string
          for outputing.  If lst_mode = 1, str_rep outputs a list of
          strings where each string contains one multivector coefficient
-         concatenated with the corressponding base or blade symbol.
+         concatenated with the corresponding base or blade symbol.
          """
         if lst_mode:
             outlst = []
@@ -773,15 +773,15 @@ class MV(object):
                     if x != ZERO:
                         xstr = x.__str__()
                         if xstr == '+1' or xstr == '1' or xstr == '-1':
-                           if xstr == '+1' or xstr == '1':
-                               xstr = '+'
-                           else:
-                               xstr = '-'
+                            if xstr == '+1' or xstr == '1':
+                                xstr = '+'
+                            else:
+                                xstr = '-'
                         else:
-                           if xstr[0] != '+':
-                               xstr = '+('+xstr+')'
-                           else:
-                               xstr = '+('+xstr[1:]+')'
+                            if xstr[0] != '+':
+                                xstr = '+('+xstr+')'
+                            else:
+                                xstr = '+('+xstr[1:]+')'
                         value += xstr+labels[igrade][j]
                         if MV.str_mode and not lst_mode:
                             value += value+'\n'
@@ -884,7 +884,7 @@ class MV(object):
     def scalar_fct(fct_name):
         """
         Create multivector scalar function with name fct_name (string) and
-        independent varibles coords (list of variable).  Default variables are
+        independent variables coords (list of variable).  Default variables are
         those associated with each dimension of vector space.
         """
         phi = sympy.Function(fct_name)(*MV.coords)
@@ -896,7 +896,7 @@ class MV(object):
     def vector_fct(fct_name,vars=''):
         """
         Create multivector vector function with name fct_name (string) and
-        independent varibles coords (list of variable).  Default variables are
+        independent variables coords (list of variable).  Default variables are
         those associated with each dimension of vector space.
         """
         if isinstance(vars,types.StringType):
@@ -919,7 +919,7 @@ class MV(object):
     def rebase(x,coords,base_name='',debug=False,debug_level=0):
         """
         Define curvilinear coordinates for previously defined vector (multivector) space (MV.setup has been run)
-        with position vector, x, that is a vector function of the independendent coordinates, coords (list of
+        with position vector, x, that is a vector function of the independent coordinates, coords (list of
         sympy variables equal in length to dimension of vector space), and calculate:
 
             1. Frame (basis) vectors
@@ -932,15 +932,15 @@ class MV(object):
         The basis vectors are named with the base_name (string) and a subscript derived from the name of each
         coordinate.  So that if the base name is 'e' and the coordinated are [r,theta,z] the variable names
         of the frame vectors would be e_r, e_theta, and e_z.  For LaTeX output the names of the frame vectors
-        would be e_{r}, e_{\theta}, and e_{z}.  Everthing needed to compute the geometric, outer, and inner
+        would be e_{r}, e_{\theta}, and e_{z}.  Everything needed to compute the geometric, outer, and inner
         derivatives of multivector functions in curvilinear coordinates is calculated.
 
-        If debug is True all the quatities in the above list are output in LaTeX format.
+        If debug is True all the quantities in the above list are output in LaTeX format.
 
         Currently rebase works with cylindrical and spherical coordinates in any dimension.  The limitation is the
         ability to automatically simplify complex sympy expressions generated while calculating the quantities in
         the above list.  This is why the debug option is included.  The debug_level can equal 0,1,2, or 3 and
-        determines how far in the list to calculate (imput 0 to do the entire list) while debugging.
+        determines how far in the list to calculate (input 0 to do the entire list) while debugging.
         """
         global MAIN_PROGRAM
 
@@ -1260,7 +1260,7 @@ class MV(object):
         if debug:
             print 'Representation of Original Basis Vectors'
             for evec in MV.org_basis:
-                 print evec
+                print evec
 
             print 'Renormalized Reciprocal Vectors '+\
                   '$\\bfrac{'+bmhat+'^{k}}{\\abs{\\bm{'+LaTeX_base+'}_{k}}}$'
@@ -1532,7 +1532,7 @@ class MV(object):
         """
         MV.inner_product(mv1,mv2) calculates the inner
 
-        mode = 's' - symmetic (Doran & Lasenby)
+        mode = 's' - symmetric (Doran & Lasenby)
         mode = 'l' - left contraction (Dorst)
         mode = 'r' - right contraction (Dorst)
         """
@@ -1672,7 +1672,7 @@ class MV(object):
 
         mvname is name of multivector.
         If fct is 'True' and MV.coords is defined in MV.setup then a
-        multivector field of MV.coords is instanciated.
+        multivector field of MV.coords is instantiated.
         """
 
         self.name      = mvname
@@ -2143,8 +2143,8 @@ class MV(object):
         Grade projection operator. For multivector X, X.project(r)
         returns multivector of grade r components of X if r is an
         integer. If r is a multivector X.project(r) returns a
-        mutivector consisting of the grade of X for which r has non-
-        zero grades. For example if X is a general multvector and
+        multivector consisting of the grade of X for which r has non-
+        zero grades. For example if X is a general multivector and
         r is a general spinor then X.project(r) will return the even
         grades of X.
         """
@@ -2198,7 +2198,7 @@ class MV(object):
 
     def rev(self):
         """
-        Revisioin operator. For multivector X, X.rev()
+        Revision operator. For multivector X, X.rev()
         returns reversed multivector of X.
         """
         revmv = MV()
@@ -2382,8 +2382,8 @@ class MV(object):
 
     def compact(self):
         """
-        Convert zero numpy arrays to single interge zero place holder
-        in grade list for instanciated multivector. For example if
+        Convert zero numpy arrays to single integer zero place holder
+        in grade list for instantiated multivector. For example if
         numpy array of grade one components is a zero array then replace
         with single integer equal to zero.
         """
@@ -2565,6 +2565,3 @@ def reciprocal_frame(vlst,names=''):
 
 def S(value):
     return(MV(value,'scalar'))
-
-
-

@@ -5,26 +5,21 @@ A Printer for generating readable representation of most sympy classes.
 from printer import Printer
 from sympy.printing.precedence import precedence, PRECEDENCE
 from sympy.core.basic import S
-from sympy.core.numbers import One, Rational
+from sympy.core.numbers import Rational
 from sympy.core.power import Pow
-from sympy.core.symbol import Symbol, Wild
 from sympy.core.basic import Basic
 
-import sympy.mpmath.libmpf as mlib
-from sympy.mpmath.settings import prec_to_dps
+import sympy.mpmath.libmp as mlib
+from sympy.mpmath.libmp import prec_to_dps
+
+from sympy.polys.polyerrors import PolynomialError
 
 class StrPrinter(Printer):
     printmethod = "_sympystr_"
-
-    def __init__(self, profile=None):
-        Printer.__init__(self)
-
-        self._settings = {
-                "full_prec" : "auto",
-        }
-
-        if profile is not None:
-            self._settings.update(profile)
+    _default_settings = {
+        "order": None,
+        "full_prec": "auto",
+    }
 
     def parenthesize(self, item, level):
         if precedence(item) <= level:
@@ -72,6 +67,9 @@ class StrPrinter(Printer):
         if sign=='+':
             sign = ""
         return sign + ' '.join(l)
+
+    def _print_Assume(self, expr):
+        return 'Assume(%s, %r, %s)' % (expr.expr, expr.key, expr.value)
 
     def _print_Basic(self, expr):
         l = [self._print(o) for o in expr.args]
@@ -154,6 +152,10 @@ class StrPrinter(Printer):
 
         return "%s%s, %s%s" % \
                (left, self._print(i.start), self._print(i.end), right)
+
+    def _print_LatticeOp(self, expr):
+        args = sorted(expr.args, cmp=expr._compare_pretty)
+        return expr.func.__name__ + "(%s)"%", ".join(self._print(arg) for arg in args)
 
     def _print_Limit(self, expr):
         e, z, z0, dir = expr.args
@@ -243,17 +245,17 @@ class StrPrinter(Printer):
         return 'pi'
 
     def _print_Poly(self, expr):
-        terms, symbols = [], [ self._print(s) for s in expr.symbols ]
+        terms, gens = [], [ self._print(s) for s in expr.gens ]
 
-        for coeff, monom in expr.iter_terms():
+        for monom, coeff in expr.terms():
             s_monom = []
 
             for i, exp in enumerate(monom):
                 if exp > 0:
                     if exp == 1:
-                        s_monom.append(symbols[i])
+                        s_monom.append(gens[i])
                     else:
-                        s_monom.append(symbols[i] + "**%d" % exp)
+                        s_monom.append(gens[i] + "**%d" % exp)
 
             s_monom = "*".join(s_monom)
 
@@ -263,15 +265,16 @@ class StrPrinter(Printer):
                 else:
                     s_coeff = self._print(coeff)
             else:
-                if s_monom and abs(coeff) is S.One:
-                    if coeff.is_negative:
-                        terms.extend(['-', s_monom])
-                    else:
+                if s_monom:
+                    if coeff is S.One:
                         terms.extend(['+', s_monom])
+                        continue
 
-                    continue
-                else:
-                    s_coeff = self._print(coeff)
+                    if coeff is S.NegativeOne:
+                        terms.extend(['-', s_monom])
+                        continue
+
+                s_coeff = self._print(coeff)
 
             if not s_monom:
                 s_term = s_coeff
@@ -291,15 +294,20 @@ class StrPrinter(Printer):
 
         format = expr.__class__.__name__ + "(%s, %s"
 
-        if expr.is_multivariate and expr.order != 'grlex':
-            format += ", order='%s')" % expr.order
+        try:
+            format += ", modulus=%s" % expr.get_modulus()
+        except PolynomialError:
+            format += ", domain='%s'" % expr.get_domain()
+
+        format += ")"
+
+        return format % (' '.join(terms), ', '.join(gens))
+
+    def _print_AlgebraicNumber(self, expr):
+        if expr.is_aliased:
+            return self._print(expr.as_poly().as_basic())
         else:
-            format += ")"
-
-        return format % (' '.join(terms), ', '.join(symbols))
-
-    def _print_Polynomial(self, expr):
-        return self._print(expr.sympy_expr)
+            return self._print(expr.as_basic())
 
     def _print_Pow(self, expr):
         PREC = precedence(expr)
@@ -310,7 +318,10 @@ class StrPrinter(Printer):
                              self.parenthesize(expr.exp, PREC))
 
     def _print_Rational(self, expr):
-        return '%s/%s'%(expr.p, expr.q)
+        return '%s/%s' % (expr.p, expr.q)
+
+    def _print_Fraction(self, expr):
+        return '%s/%s' % (expr.numerator, expr.denominator)
 
     def _print_Real(self, expr):
         prec = expr._prec
@@ -376,6 +387,9 @@ class StrPrinter(Printer):
     def _print_Symbol(self, expr):
         return expr.name
 
+    def _print_str(self, expr):
+        return expr
+
     def _print_tuple(self, expr):
         if len(expr)==1:
             return "(%s,)"%self._print(expr[0])
@@ -398,15 +412,10 @@ class StrPrinter(Printer):
         return "0"
 
 
-def sstr(expr, profile=None, **kargs):
+def sstr(expr, **settings):
     """return expr in str form"""
 
-    if profile is not None:
-        profile.update(kargs)
-    else:
-        profile = kargs
-
-    p = StrPrinter(profile)
+    p = StrPrinter(settings)
     s = p.doprint(expr)
 
     return s
@@ -415,10 +424,10 @@ def sstr(expr, profile=None, **kargs):
 class StrReprPrinter(StrPrinter):
     """(internal) -- see sstrrepr"""
 
-    def _print_basestring(self, s):
+    def _print_str(self, s):
         return repr(s)
 
-def sstrrepr(expr):
+def sstrrepr(expr, **settings):
     """return expr in mixed str/repr form
 
        i.e. strings are returned in repr form with quotes, and everything else
@@ -427,7 +436,8 @@ def sstrrepr(expr):
        This function could be useful for hooking into sys.displayhook
     """
 
-    p = StrReprPrinter()
+    p = StrReprPrinter(settings)
     s = p.doprint(expr)
 
     return s
+

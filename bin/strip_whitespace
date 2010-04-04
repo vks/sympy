@@ -8,12 +8,20 @@ def strip_file(filename, write, report):
     # to re-add \n to a few right-stripped lines. The hit flag will keep us
     # from unecessarily re-writing files with no changes.
 
-    lines = open(filename).readlines()
+    lines = open(filename, 'rb').readlines() # without "b" all lines appear as \n terminated
     hit = False
+    cr = False
     for index, line in enumerate(lines):
         if line.endswith(" \n"):
             if report:
                 print "%s, line %s" % (filename, index + 1)
+            if write:
+                lines[index] = line.rstrip() + "\n"
+                hit = True
+        if line.endswith("\r\n"):
+            if report and not cr:
+                print "%s, line %s (crlf now silent)" % (filename, index + 1)
+                cr = True
             if write:
                 lines[index] = line.rstrip() + "\n"
                 hit = True
@@ -27,7 +35,7 @@ def strip_file(filename, write, report):
             hit = True
 
     if write and hit:
-        f = open(filename, "w")
+        f = open(filename, "wb") # without "b" the lines may be written in sys-dep format
         f.writelines(lines)
         f.close()
 

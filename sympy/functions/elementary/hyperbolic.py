@@ -1,11 +1,8 @@
-
-from sympy.core.basic import Basic, S, C, sympify
-from sympy.core.function import Function, Lambda
+from sympy.core.basic import S, C, sympify
+from sympy.core.function import Function
 from sympy.core.cache import cacheit
 
 from sympy.functions.elementary.miscellaneous import sqrt
-
-from sympy.utilities.decorator import deprecated
 
 ###############################################################################
 ########################### HYPERBOLIC FUNCTIONS ##############################
@@ -27,15 +24,6 @@ class sinh(Function):
 
     def inverse(self, argindex=1):
         return asinh
-
-    @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return eval(cls, arg)
 
     @classmethod
     def eval(cls, arg):
@@ -63,14 +51,14 @@ class sinh(Function):
                 if coeff.is_negative:
                     return -cls(-arg)
 
-            if isinstance(arg, asinh):
+            if arg.func == asinh:
                 return arg.args[0]
 
-            if isinstance(arg, acosh):
+            if arg.func == acosh:
                 x = arg.args[0]
                 return sqrt(x-1) * sqrt(x+1)
 
-            if isinstance(arg, atanh):
+            if arg.func == atanh:
                 x = arg.args[0]
                 return x/sqrt(1-x**2)
 
@@ -156,15 +144,6 @@ class cosh(Function):
         return acosh
 
     @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
-
-    @classmethod
     def eval(cls, arg):
         arg = sympify(arg)
 
@@ -190,13 +169,13 @@ class cosh(Function):
                 if coeff.is_negative:
                     return cls(-arg)
 
-            if isinstance(arg, asinh):
+            if arg.func == asinh:
                 return sqrt(1+arg.args[0]**2)
 
-            if isinstance(arg, acosh):
+            if arg.func == acosh:
                 return arg.args[0]
 
-            if isinstance(arg, atanh):
+            if arg.func == atanh:
                 return 1/sqrt(1-arg.args[0]**2)
 
     @staticmethod
@@ -281,15 +260,6 @@ class tanh(Function):
         return atanh
 
     @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
-
-    @classmethod
     def eval(cls, arg):
         arg = sympify(arg)
 
@@ -315,15 +285,15 @@ class tanh(Function):
                 if coeff.is_negative:
                     return -cls(-arg)
 
-            if isinstance(arg, asinh):
+            if arg.func == asinh:
                 x = arg.args[0]
                 return x/sqrt(1+x**2)
 
-            if isinstance(arg, acosh):
+            if arg.func == acosh:
                 x = arg.args[0]
                 return sqrt(x-1) * sqrt(x+1) / x
 
-            if isinstance(arg, atanh):
+            if arg.func == atanh:
                 return arg.args[0]
 
     @staticmethod
@@ -408,15 +378,6 @@ class coth(Function):
 
     def inverse(self, argindex=1):
         return acoth
-
-    @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
 
     @classmethod
     def eval(cls, arg):
@@ -521,15 +482,6 @@ class asinh(Function):
             raise ArgumentIndexError(self, argindex)
 
     @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
-
-    @classmethod
     def eval(cls, arg):
         arg = sympify(arg)
 
@@ -566,16 +518,13 @@ class asinh(Function):
             return S.Zero
         else:
             x = sympify(x)
-
-            if len(previous_terms) > 2:
+            if len(previous_terms) >= 2 and n > 2:
                 p = previous_terms[-2]
-                return -p * (n-2)**2/(k*(k-1)) * x**2
+                return -p * (n-2)**2/(n*(n-1)) * x**2
             else:
                 k = (n - 1) // 2
-
                 R = C.RisingFactorial(S.Half, k)
                 F = C.Factorial(k)
-
                 return (-1)**k * R / F * x**n / n
 
     def _eval_as_leading_term(self, x):
@@ -603,15 +552,6 @@ class acosh(Function):
             return (self.args[0]**2 - 1)**(-S.Half)
         else:
             raise ArgumentIndexError(self, argindex)
-
-    @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
 
     @classmethod
     def eval(cls, arg):
@@ -654,16 +594,13 @@ class acosh(Function):
             return S.Zero
         else:
             x = sympify(x)
-
-            if len(previous_terms) > 2:
+            if len(previous_terms) >= 2 and n > 2:
                 p = previous_terms[-2]
-                return p * (n-2)**2/(k*(k-1)) * x**2
+                return p * (n-2)**2/(n*(n-1)) * x**2
             else:
                 k = (n - 1) // 2
-
                 R = C.RisingFactorial(S.Half, k)
                 F = C.Factorial(k)
-
                 return -R / F * S.ImaginaryUnit * x**n / n
 
     def _eval_as_leading_term(self, x):
@@ -691,15 +628,6 @@ class atanh(Function):
             return 1/(1-self.args[0]**2)
         else:
             raise ArgumentIndexError(self, argindex)
-
-    @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
 
     @classmethod
     def eval(cls, arg):
@@ -761,15 +689,6 @@ class acoth(Function):
             return 1/(1-self.args[0]**2)
         else:
             raise ArgumentIndexError(self, argindex)
-
-    @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
 
     @classmethod
     def eval(cls, arg):

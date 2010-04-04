@@ -61,7 +61,7 @@ printing.
 - Also generate .pyf code for f2py
 - A default complex datatype
 - Include extra information in the header: date, user, hostname, sha1 hash, ...
-- Isolate constants and evaluate them beforehand in double precission
+- Isolate constants and evaluate them beforehand in double precision
 - Common Subexpression Elimination
 - User defined comments in the generated code
 - Fortran 77
@@ -405,7 +405,7 @@ def codegen(name_expr, language, prefix, project="project", to_files=False, head
 
        >>> from sympy import symbols
        >>> from sympy.utilities.codegen import codegen
-       >>> x, y, z = symbols('xyz')
+       >>> from sympy.abc import x, y, z
        >>> [(c_name, c_code), (h_name, c_header)] = \\
        ...     codegen(("f", x+y*z), "C", "test", header=False, empty=False)
        >>> print c_name
@@ -447,4 +447,3 @@ def codegen(name_expr, language, prefix, project="project", to_files=False, head
 
     # Write the code.
     return code_gen.write(routines, prefix, to_files, header, empty)
-

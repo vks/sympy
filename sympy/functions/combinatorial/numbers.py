@@ -11,8 +11,6 @@ from sympy import Function, S, Symbol, Rational, oo, Integer, C
 
 from sympy.mpmath import bernfrac
 
-from sympy.utilities.decorator import deprecated
-
 def _product(a, b):
     p = 1
     for k in xrange(a, b+1):
@@ -43,7 +41,7 @@ class fibonacci(Function):
 
     Examples
     ========
-        >>> from sympy import *
+        >>> from sympy import fibonacci, Symbol
 
         >>> [fibonacci(x) for x in range(11)]
         [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55]
@@ -77,11 +75,6 @@ class fibonacci(Function):
         return (prev[-2] + _sym*prev[-1]).expand()
 
     @classmethod
-    @deprecated
-    def canonize(cls, n, sym=None):
-        return cls.eval(n, sym)
-
-    @classmethod
     def eval(cls, n, sym=None):
         if n.is_Integer:
             n = int(n)
@@ -105,7 +98,7 @@ class lucas(Function):
 
     Examples
     ========
-        >>> from sympy import *
+        >>> from sympy import lucas
 
         >>> [lucas(x) for x in range(11)]
         [2, 1, 3, 4, 7, 11, 18, 29, 47, 76, 123]
@@ -122,11 +115,6 @@ class lucas(Function):
         * http://en.wikipedia.org/wiki/Lucas_number
 
     """
-
-    @classmethod
-    @deprecated
-    def canonize(cls, n):
-        return cls.eval(n)
 
     @classmethod
     def eval(cls, n):
@@ -151,7 +139,7 @@ class bernoulli(Function):
 
     Examples
     ========
-        >>> from sympy import *
+        >>> from sympy import bernoulli
 
         >>> [bernoulli(n) for n in range(11)]
         [1, -1/2, 1/6, 0, -1/30, 0, 1/42, 0, -1/30, 0, 5/66]
@@ -174,7 +162,7 @@ class bernoulli(Function):
         function, which is x/(exp(x) - 1). For odd indices > 1, the
         Bernoulli numbers are zero.
 
-        The Bernoulli polynomials statisfy the analogous formula
+        The Bernoulli polynomials satisfy the analogous formula
                     n
                    ___
                   \      / n \         n-k
@@ -233,11 +221,6 @@ class bernoulli(Function):
     # case modulo 6 separately
     _cache = {0: S.One, 2:Rational(1,6), 4:Rational(-1,30)}
     _highest = {0:0, 2:2, 4:4}
-
-    @classmethod
-    @deprecated
-    def canonize(cls, n, sym=None):
-        return cls.eval(n, sym)
 
     @classmethod
     def eval(cls, n, sym=None):
@@ -300,7 +283,7 @@ class bell(Function):
 
     Examples
     ========
-        >>> from sympy import *
+        >>> from sympy import bell, Symbol
 
         >>> [bell(n) for n in range(11)]
         [1, 1, 2, 5, 15, 52, 203, 877, 4140, 21147, 115975]
@@ -364,11 +347,6 @@ class bell(Function):
         return (_sym * s).expand()
 
     @classmethod
-    @deprecated
-    def canonize(cls, n, sym=None):
-        return cls.eval(n, sym)
-
-    @classmethod
     def eval(cls, n, sym=None):
         if n.is_Integer and n.is_nonnegative:
             if sym is None:
@@ -395,7 +373,7 @@ class harmonic(Function):
 
     Examples
     ========
-        >>> from sympy import *
+        >>> from sympy import harmonic, oo
 
         >>> [harmonic(n) for n in range(6)]
         [0, 1, 3/2, 11/6, 25/12, 137/60]
@@ -426,11 +404,6 @@ class harmonic(Function):
     # Generate one memoized Harmonic number-generating function for each
     # order and store it in a dictionary
     _functions = {}
-
-    @classmethod
-    @deprecated
-    def canonize(cls, n, m=None):
-        return cls.eval(n, m)
 
     @classmethod
     def eval(cls, n, m=None):

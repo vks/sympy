@@ -1,9 +1,7 @@
-
-from sympy.core.basic import Basic, S, C, sympify
+from sympy.core.basic import S, C
 from sympy.core.function import Function, Derivative
 from sympy.functions.elementary.miscellaneous import sqrt
 
-from sympy.utilities.decorator import deprecated
 from sympy.utilities.iterables import make_list, iff
 
 ###############################################################################
@@ -17,9 +15,8 @@ class re(Function):
        is needed then use Basic.as_real_imag() or perform complex
        expansion on instance of this function.
 
-       >>> from sympy import *
-
-       >>> x, y = symbols('x', 'y')
+       >>> from sympy import re, im, I, E
+       >>> from sympy.abc import x, y
 
        >>> re(2*E)
        2*E
@@ -38,15 +35,6 @@ class re(Function):
     nargs = 1
 
     is_real = True
-
-    @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
 
     @classmethod
     def eval(cls, arg):
@@ -98,9 +86,8 @@ class im(Function):
        result is needed then use Basic.as_real_imag() or perform complex
        expansion on instance of this function.
 
-       >>> from sympy import *
-
-       >>> x, y = symbols('x', 'y')
+       >>> from sympy import re, im, E, I
+       >>> from sympy.abc import x, y
 
        >>> im(2*E)
        0
@@ -119,15 +106,6 @@ class im(Function):
     nargs = 1
 
     is_real = True
-
-    @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
 
     @classmethod
     def eval(cls, arg):
@@ -182,11 +160,6 @@ class sign(Function):
     """
 
     nargs = 1
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
 
     @classmethod
     def eval(cls, arg):
@@ -245,15 +218,6 @@ class abs(Function):
             return sign(self.args[0])
         else:
             raise ArgumentIndexError(self, argindex)
-
-    @classmethod
-    def _eval_apply_subs(self, *args):
-        return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
 
     @classmethod
     def eval(cls, arg):
@@ -324,11 +288,6 @@ class arg(Function):
     is_bounded = True
 
     @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
-
-    @classmethod
     def eval(cls, arg):
         x, y = re(arg), im(arg)
         arg = C.atan2(y, x)
@@ -348,7 +307,7 @@ class arg(Function):
 class conjugate(Function):
     """Changes the sign of the imaginary part of a complex number.
 
-        >>> from sympy import *
+        >>> from sympy import conjugate, I
 
         >>> conjugate(1 + I)
         1 - I
@@ -356,11 +315,6 @@ class conjugate(Function):
     """
 
     nargs = 1
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
 
     @classmethod
     def eval(cls, arg):

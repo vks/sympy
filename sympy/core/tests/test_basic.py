@@ -1,7 +1,9 @@
 from sympy import Basic, S, Symbol, Real, Integer, Rational,  \
     sin, cos, exp, log, oo, sqrt, symbols, Integral, sympify, \
     WildFunction, Poly, Function, Derivative, Number, pi, var, \
-    NumberSymbol, zoo, Piecewise
+    NumberSymbol, zoo, Piecewise, Mul
+
+from sympy.core.cache import clear_cache
 
 from sympy.utilities.pytest import XFAIL, raises
 
@@ -153,6 +155,14 @@ def test_relational():
     assert (-pi >= 3) == False
     assert (x - 2 < x - 3) == False
 
+def test_relational_noncommutative():
+    from sympy import Lt, Gt, Le, Ge
+    a, b = symbols('a b', commutative=False)
+    assert (a < b)  == Lt(a, b)
+    assert (a <= b) == Le(a, b)
+    assert (a > b)  == Gt(a, b)
+    assert (a >= b) == Ge(a, b)
+
 def test_basic_nostr():
     for obj in basic_objs:
         for op in ['+','-','*','/','**']:
@@ -210,13 +220,14 @@ def test_atoms():
 
    assert sorted(list(Poly(0, x).atoms())) == [S.Zero]
    assert sorted(list(Poly(1, x).atoms())) == [S.One]
-   assert sorted(list(Poly(x, x).atoms())) == sorted([S.One, x])
-   assert sorted(list(Poly(x, x, y).atoms())) == sorted([S.One, x])
-   assert sorted(list(Poly(x + y, x, y).atoms())) == sorted([S.One, x, y])
-   assert sorted(list(Poly(x + y, x, y, z).atoms())) == sorted([S.One, x, y])
-   assert sorted(list(Poly(x + y*t, x, y, z).atoms())) == \
-           sorted([S.One, t, x, y])
-   I=S.ImaginaryUnit
+
+   assert sorted(list(Poly(x, x).atoms())) == [x]
+   assert sorted(list(Poly(x, x, y).atoms())) == [x]
+   assert sorted(list(Poly(x + y, x, y).atoms())) == sorted([x, y])
+   assert sorted(list(Poly(x + y, x, y, z).atoms())) == sorted([x, y])
+   assert sorted(list(Poly(x + y*t, x, y, z).atoms())) == sorted([t, x, y])
+
+   I = S.ImaginaryUnit
    assert list((I*pi).atoms(NumberSymbol)) == [pi]
    assert sorted((I*pi).atoms(NumberSymbol, I)) == \
           sorted((I*pi).atoms(I,NumberSymbol)) == [pi, I]
@@ -364,10 +375,6 @@ def test_args():
 def test_iter_basic_args():
     assert list(sin(x*y).iter_basic_args()) == [x*y]
     assert list((x**y).iter_basic_args()) == [x, y]
-
-    assert list(Poly(0, x).iter_basic_args()) == [S.Zero]
-    assert list(Poly(1, x).iter_basic_args()) == [S.One]
-    assert list(Poly(x, x).iter_basic_args()) == [S.One, x]
 
 def test_noncommutative_expand_issue658():
     A, B, C = symbols('ABC', commutative=False)
@@ -685,9 +692,8 @@ def test_coeff_expand():
     assert expr2.coeff(z, expand=False) == (x+y)**2 + (2*x + 2*y)**2
 
 def test_integrate():
-    assert (log(x)).integrate((x, 0, 1)) == -1
-    assert sin(x).integrate(x) == -cos(x)
-    assert sin(x).integrate(('x',0,1)) == 1 - cos(1)
+    assert x.integrate(x) == x**2/2
+    assert x.integrate((x, 0, 1)) == S(1)/2
 
 def test_count_ops():
     f = (x*y + 3/y)**(3 + 2)
@@ -708,3 +714,57 @@ def test_contains():
     assert f in p
     assert g in p
     assert not h in p
+
+def test_as_Something():
+    assert x.as_Add() == [x]
+    assert x.as_Mul() == [x]
+    assert x.as_Pow() == (x, S.One)
+
+    assert (x*y*z).as_Add() == [x*y*z]
+    assert sorted((x*y*z).as_Mul()) == [x, y, z]
+    assert (x*y*z).as_Pow() == (x*y*z, S.One)
+
+    assert sorted((x+y+z).as_Add()) == [x, y, z]
+    assert (x+y+z).as_Mul() == [x+y+z]
+    assert (x+y+z).as_Pow() == (x+y+z, S.One)
+
+    assert ((x+y)**z).as_Add() == [(x+y)**z]
+    assert ((x+y)**z).as_Mul() == [(x+y)**z]
+    assert ((x+y)**z).as_Pow() == (x+y, z)
+
+def test_Basic_keep_sign():
+    Basic.keep_sign = True
+    assert Mul(x - 1, x + 1) == (x - 1)*(x + 1)
+    assert (1/(x - 1)).as_coeff_terms()[0] == +1
+
+    clear_cache()
+
+    Basic.keep_sign = False
+    assert Mul(x - 1, x + 1) == -(1 - x)*(1 + x)
+    assert (1/(x - 1)).as_coeff_terms()[0] == -1
+
+################# Tests involving only Basic instances ########
+b1 = Basic(); b2 = Basic(b1); b3 = Basic(b2)
+b21 = Basic(b2, b1)
+
+def test_equality():
+    instances = [b1, b2, b3, b21, Basic(b1,b1,b1)]
+    for i, b_i in enumerate(instances):
+        for j, b_j in enumerate(instances):
+            assert (b_i == b_j) == (i == j)
+
+def test_matches_basic():
+    instances = [Basic(b1,b1,b2), Basic(b1,b2,b1), Basic(b2, b1, b1),
+                    Basic(b1, b2), Basic(b2, b1), b2, b1]
+    for i, b_i in enumerate(instances):
+        for j, b_j in enumerate(instances):
+            if i ==j:
+                assert b_i.matches(b_j) == {}
+            else:
+                assert b_i.matches(b_j) is None
+
+def test_subs():
+    assert b21.subs(b2, b1) == Basic(b1, b1)
+    assert b21.subs(b2, b21) == Basic(b21, b1)
+    assert b3.subs(b2, b1) == b2
+

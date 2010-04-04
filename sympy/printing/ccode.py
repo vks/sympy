@@ -10,7 +10,7 @@ source code files that are compilable without further modifications.
 """
 
 from str import StrPrinter
-from sympy.printing.precedence import precedence, PRECEDENCE
+from sympy.printing.precedence import precedence
 from sympy.core.basic import S
 
 class CCodePrinter(StrPrinter):
@@ -54,6 +54,18 @@ class CCodePrinter(StrPrinter):
         code = "if %s" + last_line
         return code % "else if ".join(ecpairs)
 
+    def _print_And(self, expr):
+        PREC = precedence(expr)
+        return '&&'.join(self.parenthesize(a, PREC) for a in expr.args)
+
+    def _print_Or(self, expr):
+        PREC = precedence(expr)
+        return '||'.join(self.parenthesize(a, PREC) for a in expr.args)
+
+    def _print_Not(self, expr):
+        PREC = precedence(expr)
+        return '!'+self.parenthesize(expr.args[0], PREC)
+
     def _print_Function(self, expr):
         if expr.func.__name__ == "ceiling":
             return "ceil(%s)" % self.stringify(expr.args, ", ")
@@ -63,20 +75,20 @@ class CCodePrinter(StrPrinter):
             return StrPrinter._print_Function(self, expr)
 
 
-def ccode(expr):
+def ccode(expr, **settings):
     r"""Converts an expr to a string of c code
 
         Works for simple expressions using math.h functions.
 
-        >>> from sympy import *
-        >>> from sympy.abc import *
+        >>> from sympy import ccode, Rational
+        >>> from sympy.abc import tau
 
         >>> ccode((2*tau)**Rational(7,2))
         '8*pow(2,(1.0/2.0))*pow(tau,(7.0/2.0))'
 
     """
-    return CCodePrinter().doprint(expr)
+    return CCodePrinter(settings).doprint(expr)
 
-def print_ccode(expr):
+def print_ccode(expr, **settings):
     """Prints C representation of the given expression."""
-    print ccode(expr)
+    print ccode(expr, **settings)

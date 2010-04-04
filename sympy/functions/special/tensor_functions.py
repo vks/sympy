@@ -1,7 +1,5 @@
-
 from sympy.core.function import Function
 from sympy.core import sympify, S
-from sympy.utilities.decorator import deprecated
 
 ###############################################################################
 ###################### Kronecker Delta, Levi-Civita etc. ######################
@@ -18,11 +16,6 @@ class Dij(Function):
     nargs = (1, 2)
 
     @classmethod
-    @deprecated
-    def canonize(cls, i, j=0):
-        return cls.eval(i, j)
-
-    @classmethod
     def eval(cls, i, j=0):
         i, j = map(sympify, (i, j))
         if i == j:
@@ -35,11 +28,6 @@ class Eijk(Function):
     Represents the Levi-Civita symbol (antisymmetric symbol)
     """
     nargs = 3
-
-    @classmethod
-    @deprecated
-    def canonize(cls, i, j, k):
-        return cls.eval(i, j, k)
 
     @classmethod
     def eval(cls, i, j, k):

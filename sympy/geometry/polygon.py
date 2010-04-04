@@ -58,7 +58,7 @@ class Polygon(GeometryEntity):
 
         Examples:
         ======
-            >>> from sympy.geometry import *
+            >>> from sympy import Point, Polygon
             >>> p1,p2,p3,p4 = map(Point, [(0,0), (1,0), (5,1), (0,1)])
             >>> poly = Polygon(p1, p2, p3, p4)
             >>> poly.angles[p1]
@@ -115,7 +115,7 @@ class Polygon(GeometryEntity):
 
     @property
     def sides(self):
-        """A list of the segments that form the sides fo the polygon."""
+        """A list of the segments that form the sides of the polygon."""
         res = []
         for ind in xrange(0, len(self.vertices)-1):
             res.append( Segment(self.vertices[ind], self.vertices[ind+1]) )
@@ -217,6 +217,7 @@ class RegularPolygon(Polygon):
 
     Example:
     ========
+        >>> from sympy.geometry import RegularPolygon, Point
         >>> RegularPolygon(Point(0, 0), 5, 5)
         RegularPolygon(Point(0, 0), 5, 5)
 

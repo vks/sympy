@@ -1,13 +1,11 @@
-
 from sympy.core.basic import Basic, S
 from sympy.core.function import Function, diff
 from sympy.core.numbers import Number
 from sympy.core.relational import Relational
 from sympy.core.sympify import sympify
+from sympy.core.sets import Interval, Set
 
-from sympy.utilities.decorator import deprecated
-
-class ExprCondPair(Basic):
+class ExprCondPair(Function):
     """Represents an expression, condition pair."""
 
     def __new__(cls, *args, **assumptions):
@@ -33,7 +31,6 @@ class ExprCondPair(Basic):
         yield self.expr
         yield self.cond
 
-
 class Piecewise(Function):
     """
     Represents a piecewise function.
@@ -51,8 +48,8 @@ class Piecewise(Function):
 
     Examples
     ========
-      >>> from sympy import *
-      >>> x = Symbol('x')
+      >>> from sympy import Piecewise, log
+      >>> from sympy.abc import x
       >>> f = x**2
       >>> g = log(x)
       >>> p = Piecewise( (0, x<-1), (f, x<=1), (g, True))
@@ -73,10 +70,10 @@ class Piecewise(Function):
             pair = ExprCondPair(*ec)
             cond_type = type(pair.cond)
             if not (cond_type is bool or issubclass(cond_type, Relational) or \
-                    issubclass(cond_type, Number)):
+                    issubclass(cond_type, Number) or issubclass(cond_type, Set)):
                 raise TypeError, \
                     "Cond %s is of type %s, but must be a bool," \
-                    " Relational or Number" % (pair.cond, cond_type)
+                    " Relational, Number or Set" % (pair.cond, cond_type)
             newargs.append(pair)
 
         r = cls.eval(*newargs)
@@ -94,19 +91,30 @@ class Piecewise(Function):
         return tuple(args)
 
     @classmethod
-    @deprecated
-    def canonize(cls, *args):
-        return cls.eval(*args)
-
-    @classmethod
     def eval(cls, *args):
         # Check for situations where we can evaluate the Piecewise object.
         # 1) Hit an unevaluatable cond (e.g. x<1) -> keep object
         # 2) Hit a true condition -> return that expr
         # 3) Remove false conditions, if no conditions left -> raise ValueError
-        all_conds_evaled = True
+        all_conds_evaled = True    # Do all conds eval to a bool?
+        piecewise_again = False    # Should we pass args to Piecewise again?
         non_false_ecpairs = []
         for expr, cond in args:
+            # Check here if expr is a Piecewise and collapse if one of
+            # the conds in expr matches cond. This allows the collapsing
+            # of Piecewise((Piecewise(x,x<0),x<0)) to Piecewise((x,x<0)).
+            # This is important when using piecewise_fold to simplify
+            # multiple Piecewise instances having the same conds.
+            # Eventually, this code should be able to collapse Piecewise's
+            # having different intervals, but this will probably require
+            # using the new assumptions.
+            if isinstance(expr, Piecewise):
+                for e, c in expr.args:
+                    # Don't collapse if cond is "True" as this leads to
+                    # incorrect simplifications with nested Piecewises.
+                    if c == cond and cond is not True:
+                        expr = e
+                        piecewise_again = True
             cond_eval = cls.__eval_cond(cond)
             if cond_eval is None:
                 all_conds_evaled = False
@@ -115,7 +123,7 @@ class Piecewise(Function):
                 if all_conds_evaled:
                     return expr
                 non_false_ecpairs.append( (expr, cond) )
-        if len(non_false_ecpairs) != len(args):
+        if len(non_false_ecpairs) != len(args) or piecewise_again:
             return Piecewise(*non_false_ecpairs)
 
         # Count number of arguments.
@@ -224,6 +232,10 @@ class Piecewise(Function):
         for e, c in self.args:
             if isinstance(c, bool):
                 new_args.append((e._eval_subs(old, new), c))
+            elif isinstance(c, Set):
+                # What do we do if there are more than one symbolic
+                # variable. Which do we put pass to Set.contains?
+                new_args.append((e._eval_subs(old, new),  c.contains(new)))
             else:
                 new_args.append((e._eval_subs(old, new), c._eval_subs(old, new)))
         return Piecewise( *new_args )
@@ -231,9 +243,13 @@ class Piecewise(Function):
     @classmethod
     def __eval_cond(cls, cond):
         """Returns S.One if True, S.Zero if False, or None if undecidable."""
-        if type(cond) == bool or cond.is_number or (cond.args[0].is_Number and cond.args[1].is_Number):
-            if cond: return S.One
-            return S.Zero
+        if type(cond) == bool or cond.is_number:
+            if cond:
+                return S.One
+            else:
+                return S.Zero
+        elif type(cond) == Set:
+            return None
         return None
 
 def piecewise_fold(expr):
@@ -241,8 +257,8 @@ def piecewise_fold(expr):
     Takes an expression containing a piecewise function and returns the
     expression in piecewise form.
 
-    >>> from sympy import *
-    >>> x = Symbol('x')
+    >>> from sympy import Piecewise, piecewise_fold
+    >>> from sympy.abc import x
     >>> p = Piecewise((x, x < 1), (1, 1 <= x))
     >>> piecewise_fold(x*p)
     Piecewise((x**2, x < 1), (x, 1 <= x))
@@ -251,17 +267,16 @@ def piecewise_fold(expr):
     if not isinstance(expr, Basic) or not expr.has_piecewise:
         return expr
     new_args = map(piecewise_fold, expr.args)
-    if type(expr) is ExprCondPair:
+    if expr.func is ExprCondPair:
         return ExprCondPair(*new_args)
     piecewise_args = []
     for n, arg in enumerate(new_args):
-        if type(arg) is Piecewise:
+        if arg.func is Piecewise:
             piecewise_args.append(n)
     if len(piecewise_args) > 0:
         n = piecewise_args[0]
-        new_args = [(expr.__class__(*(new_args[:n] + [e] + new_args[n+1:])), c) \
+        new_args = [(expr.func(*(new_args[:n] + [e] + new_args[n+1:])), c) \
                         for e, c in new_args[n].args]
         if len(piecewise_args) > 1:
             return piecewise_fold(Piecewise(*new_args))
     return Piecewise(*new_args)
-

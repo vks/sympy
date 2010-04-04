@@ -1,4 +1,4 @@
-from sympy.core import Basic, C, Rational, Add, Mul, Pow, Symbol, Wild, oo
+from sympy.core import Basic, C, Rational, Pow, Symbol, Wild, oo
 from sympy.core import sympify
 #from sympy.specfun import rising_factorial, factorial, factorial_simplify
 #from sympy.specfun.factorials import unfac
@@ -38,7 +38,7 @@ class Sum2(_BigOperator):
     """
 
     def reindex(self, a):
-        """Reindex the sum to start at a new lower index a."""
+        """Re-index the sum to start at a new lower index a."""
         diff = self.a - a
         b = self.b - diff
         f = self.f.subs(self.i, self.i + diff)
@@ -117,7 +117,7 @@ class Product(_BigOperator):
     __str__ = __repr__
 
     def eval(self):
-        # Simplify subproducts
+        # Simplify sub-products
         p = self._eval()
         if isinstance(p, Product):
             return self

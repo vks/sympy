@@ -1,9 +1,7 @@
-
-from sympy.core.basic import Basic, S, C, sympify
-from sympy.core.function import Lambda, Function
+from sympy.core.basic import S, C
+from sympy.core.function import Function
 
 from sympy.core.evalf import get_integer_part, PrecisionExhausted
-from sympy.utilities.decorator import deprecated
 
 ###############################################################################
 ######################### FLOOR and CEILING FUNCTIONS #########################
@@ -12,11 +10,6 @@ from sympy.utilities.decorator import deprecated
 class RoundFunction(Function):
 
     nargs = 1
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
 
     @classmethod
     def eval(cls, arg):
@@ -80,13 +73,13 @@ class RoundFunction(Function):
 class floor(RoundFunction):
     """
     Floor is a univariate function which returns the largest integer
-    value not greater than its argument. However this implementaion
+    value not greater than its argument. However this implementation
     generalizes floor to complex numbers.
 
     More information can be found in "Concrete mathematics" by Graham,
     pp. 87 or visit http://mathworld.wolfram.com/FloorFunction.html.
 
-        >>> from sympy import *
+        >>> from sympy import floor, E, I, Real, Rational
         >>> floor(17)
         17
         >>> floor(Rational(23, 10))
@@ -135,7 +128,7 @@ class ceiling(RoundFunction):
     More information can be found in "Concrete mathematics" by Graham,
     pp. 87 or visit http://mathworld.wolfram.com/CeilingFunction.html.
 
-        >>> from sympy import *
+        >>> from sympy import ceiling, E, I, Real, Rational
         >>> ceiling(17)
         17
         >>> ceiling(Rational(23, 10))
@@ -173,4 +166,3 @@ class ceiling(RoundFunction):
                 return r
         else:
             return r
-

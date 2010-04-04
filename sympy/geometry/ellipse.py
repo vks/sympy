@@ -1,4 +1,4 @@
-from sympy.core.basic import S, C, Basic, sympify
+from sympy.core.basic import S, C, sympify
 from sympy.simplify import simplify, trigsimp
 from sympy.functions.elementary.miscellaneous import sqrt
 from sympy.geometry.exceptions import GeometryError
@@ -19,6 +19,7 @@ class Ellipse(GeometryEntity):
 
     Example:
     ========
+        >>> from sympy.geometry import Ellipse, Point
         >>> e = Ellipse(Point(0, 0), 5, 1)
         >>> e.hradius, e.vradius
         (5, 1)
@@ -166,7 +167,6 @@ class Ellipse(GeometryEntity):
     def random_point(self):
         """Returns a random point on the ellipse."""
         from random import random
-        from sys import maxint
         t = C.Symbol('t', real=True)
         p = self.arbitrary_point('t')
         # get a random value in [-pi, pi)
@@ -276,11 +276,12 @@ class Ellipse(GeometryEntity):
 
 class Circle(Ellipse):
     """
-    A circle in space. Consturcted simply from a center and a radius, or
+    A circle in space. Constructed simply from a center and a radius, or
     from three non-collinear points.
 
     Example:
     ========
+        >>> from sympy.geometry import Point, Circle
         >>> c1 = Circle(Point(0, 0), 5)
         >>> c1.hradius, c1.vradius, c1.radius
         (5, 5, 5)

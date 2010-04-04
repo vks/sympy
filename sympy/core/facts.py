@@ -8,8 +8,8 @@ The whole thing is split into two parts
  - runtime inference
 
 For rule-based inference engines, the classical work is RETE algorithm [1], [2]
-Although we are not implementing it in full or even in some significant part,
-it's still worth to read about it to get the ideas behind.
+Although we are not implementing it in full (or even significantly) it's still
+still worth a read to understand the underlying ideas.
 
 In short, every rule in a system of rules is one of two forms:
 
@@ -641,7 +641,7 @@ class Prover(object):
 class FactRules:
     """Rules that describe how to deduce facts in logic space
 
-       When defined, this rules allow to quickly determine implications for a
+       When defined, these rules allow implications to quickly be determined for a
        set of facts. For this precomputed deduction tables are used. see
        `deduce_all_facts`   (forward-chaining)
 
@@ -826,13 +826,12 @@ class FactRules:
            *********************************************
 
            base  --  previously known facts (must be: fully deduced set)
-                     attention: base is modified *inplace*  /optional/
+                     attention: base is modified *in place*  /optional/
 
            providing `base` could be needed for performance reasons -- we don't
            want to spend most of the time just re-deducing base from base
            (e.g. #base=50, #facts=2)
         """
-
         # keep frequently used attributes locally, so we'll avoid extra
         # attribute access overhead
         rels = self.rels
@@ -843,20 +842,15 @@ class FactRules:
         else:
             new_facts = {}
 
-
         # XXX better name ?
         def x_new_facts(keys, v):
-            #print 'x_new_facts(%r,%r)' % (keys, v)
             for k in keys:
-                if k in new_facts:
-                    #print 'seen_fact  %s:\t %s' % (k,v)
-                    assert new_facts[k] == v, ('inconsitency between facts',new_facts,k,v)
+                if k in new_facts and new_facts[k] is not None:
+                    assert new_facts[k] == v, \
+                            ('inconsistency between facts', new_facts, k, v)
                     continue
-
                 else:
-                    #print 'new_fact   %s:\t %s' % (k,v)
                     new_facts[k] = v
-
 
         if type(facts) is dict:
             fseq = facts.iteritems()
@@ -879,19 +873,16 @@ class FactRules:
 
                 #new_fact(k, v)
                 if k in new_facts:
-                    assert new_facts[k] == v, ('inconsitency between facts',new_facts,k,v)
-
+                    assert new_facts[k] == v, \
+                            ('inconsistency between facts', new_facts, k, v)
                     # performance-wise it is important not to fire implied rules
                     # for already-seen fact -- we already did them all.
                     continue
-
                 else:
                     new_facts[k] = v
 
-
-                # some known fact -- let's follow it's implications
+                # some known fact -- let's follow its implications
                 if v is not None:
-
                     # lookup routing tables
                     try:
                         tt, tf, tbeta,  ft, ff, fbeta = rels[k]
@@ -918,15 +909,11 @@ class FactRules:
                             beta_maytrigger.update(fbeta)
 
 
-
-
             # --- beta chains ---
 
             # if no beta-rules may trigger -- it's an end-of-story
             if not beta_maytrigger:
                 break
-
-
             #print '(β) MayTrigger: %s' % beta_maytrigger
 
             fseq = []
@@ -959,13 +946,8 @@ class FactRules:
                         v = False
                     else:
                         v = True
-
                     fseq.append( (bimpl,v) )
-
-
         return new_facts
-
-
 
 
 ########################################

@@ -1,7 +1,5 @@
-
-from sympy.core.basic import Basic, S, C, sympify
-from sympy.core.function import Lambda, Function
-from sympy.utilities.decorator import deprecated
+from sympy.core.basic import S, sympify
+from sympy.core.function import Function
 
 ###############################################################################
 ############################# SQUARE ROOT FUNCTION ############################
@@ -18,11 +16,6 @@ def sqrt(arg):
 class max_(Function):
 
     nargs = 2
-
-    @classmethod
-    @deprecated
-    def canonize(cls, x, y):
-        return cls.eval(x, y)
 
     @classmethod
     def eval(cls, x, y):
@@ -46,11 +39,6 @@ class max_(Function):
 class min_(Function):
 
     nargs = 2
-
-    @classmethod
-    @deprecated
-    def canonize(cls, x, y):
-        return cls.eval(x, y)
 
     @classmethod
     def eval(cls, x, y):

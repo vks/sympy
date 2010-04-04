@@ -1,3 +1,7 @@
+from sympy import SYMPY_DEBUG
+from sympy.core import Basic, S, oo, Symbol, sympify, C, I
+from sympy.functions import log, exp
+from sympy.series.order import Order
 from sympy.simplify import powsimp
 """
 Limits
@@ -116,11 +120,6 @@ And check manually which line is wrong. Then go to the source code and debug
 this function to figure out the exact problem.
 
 """
-from sympy import SYMPY_DEBUG
-from sympy.core import Basic, S, Add, Mul, Pow, Function, oo, Symbol, \
-        Rational, Real, sympify, C, I
-from sympy.functions import log, exp
-from sympy.series.order import Order
 O = Order
 
 def debug(func):
@@ -365,7 +364,7 @@ def subexp(e,sub):
 def calculate_series(e, x):
     """ Calculates at least one term of the series of "e" in "x".
 
-    This is a place that fails most often, so it is in it's own function.
+    This is a place that fails most often, so it is in its own function.
     """
 
     f = e
@@ -422,16 +421,16 @@ class Limit2(Basic):
 
 
     def __pretty__(self):
-         e, x, t = [a.__pretty__() for a in (self.e,self.x,self.x0)]
-         a = prettyForm('lim')
-         a = prettyForm(*a.below('%s->%s' % (x, t)))
-         a = prettyForm(*stringPict.next(a, e))
-         return a
+        e, x, t = [a.__pretty__() for a in (self.e,self.x,self.x0)]
+        a = prettyForm('lim')
+        a = prettyForm(*a.below('%s->%s' % (x, t)))
+        a = prettyForm(*stringPict.next(a, e))
+        return a
 
     def __latex__(self):
-         return r"\lim_{%s \to %s}%s" % (self.x.__latex__(), \
-                                                 self.x0.__latex__(),
-                                                 self.e.__latex__() )
+        return r"\lim_{%s \to %s}%s" % (self.x.__latex__(), \
+                                                self.x0.__latex__(),
+                                                self.e.__latex__() )
 
     @property
     def e(self):

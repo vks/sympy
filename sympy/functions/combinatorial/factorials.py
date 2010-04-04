@@ -1,10 +1,7 @@
-
-from sympy.core.basic import Basic, S, C, sympify
+from sympy.core.basic import S, C, sympify
 from sympy.core.function import Function
 from sympy.ntheory import sieve
 from math import sqrt
-
-from sympy.utilities.decorator import deprecated
 
 ###############################################################################
 ######################## FACTORIAL and MULTI-FACTORIAL ########################
@@ -21,7 +18,7 @@ class Factorial(Function):
        arises in calculus, probability, number theory etc.
 
        There is strict relation of factorial with gamma function. In
-       fact n! = gamma(n+1) for nonnegarive integers. Rewrite of this
+       fact n! = gamma(n+1) for nonnegative integers. Rewrite of this
        kind is very useful in case of combinatorial simplification.
 
        Computation of the factorial is done using two algorithms. For
@@ -30,7 +27,7 @@ class Factorial(Function):
        known and computes n! via prime factorization of special class
        of numbers, called here the 'Swing Numbers'.
 
-       >>> from sympy import *
+       >>> from sympy import Symbol, factorial
        >>> n = Symbol('n', integer=True)
 
        >>> factorial(-2)
@@ -102,11 +99,6 @@ class Factorial(Function):
             return (cls._recursive(n//2)**2)*cls._swing(n)
 
     @classmethod
-    @deprecated
-    def canonize(cls, n):
-        return cls.eval(n)
-
-    @classmethod
     def eval(cls, n):
         n = sympify(n)
 
@@ -162,7 +154,7 @@ factorial   = Factorial
 class RisingFactorial(Function):
     """Rising factorial (also called Pochhammer symbol) is a double valued
        function arising in concrete mathematics, hypergeometric functions
-       and series expanansions. It is defined by
+       and series expansions. It is defined by
 
                    rf(x, k) = x * (x+1) * ... * (x + k-1)
 
@@ -170,8 +162,8 @@ class RisingFactorial(Function):
        more information check "Concrete mathematics" by Graham, pp. 66
        or visit http://mathworld.wolfram.com/RisingFactorial.html page.
 
-       >>> from sympy import *
-       >>> x = Symbol('x')
+       >>> from sympy import rf
+       >>> from sympy.abc import x
 
        >>> rf(x, 0)
        1
@@ -185,11 +177,6 @@ class RisingFactorial(Function):
     """
 
     nargs = 2
-
-    @classmethod
-    @deprecated
-    def canonize(cls, x, k):
-        return cls.eval(x, k)
 
     @classmethod
     def eval(cls, x, k):
@@ -230,7 +217,7 @@ class RisingFactorial(Function):
 class FallingFactorial(Function):
     """Falling factorial (related to rising factorial) is a double valued
        function arising in concrete mathematics, hypergeometric functions
-       and series expanansions. It is defined by
+       and series expansions. It is defined by
 
                    ff(x, k) = x * (x-1) * ... * (x - k+1)
 
@@ -238,8 +225,8 @@ class FallingFactorial(Function):
        more information check "Concrete mathematics" by Graham, pp. 66
        or visit http://mathworld.wolfram.com/FallingFactorial.html page.
 
-       >>> from sympy import *
-       >>> x = Symbol('x')
+       >>> from sympy import ff
+       >>> from sympy.abc import x
 
        >>> ff(x, 0)
        1
@@ -253,11 +240,6 @@ class FallingFactorial(Function):
     """
 
     nargs = 2
-
-    @classmethod
-    @deprecated
-    def canonize(cls, x, k):
-        return cls.eval(x, k)
 
     @classmethod
     def eval(cls, x, k):
@@ -309,21 +291,21 @@ class Binomial(Function):
 
            C(n,k) = n!/(k!(n-k)!)   or   C(n, k) = ff(n, k)/k!
 
-       First formula has strict combinatorial meaning, definig the
-       number of ways we can choose 'k' elements from 'n' element
-       set. In this case both arguments are nonnegative integers
-       and binomial is computed using efficient algorithm based
-       on prime factorisation.
+       First, in a strict combinatorial sense it defines the
+       number of ways we can choose 'k' elements from a set of
+       'n' elements. In this case both arguments are nonnegative
+       integers and binomial is computed using an efficient
+       algorithm based on prime factorization.
 
-       The other definition is generalisation for arbitaty 'n',
-       however 'k' must be also nonnegative. This case is very
-       useful in case for evaluating summations.
+       The other definition is generalization for arbitrary 'n',
+       however 'k' must also be nonnegative. This case is very
+       useful when evaluating summations.
 
        For the sake of convenience for negative 'k' this function
        will return zero no matter what valued is the other argument.
 
-       >>> from sympy import *
-       >>> n = symbols('n', integer=True)
+       >>> from sympy import Symbol, Rational, binomial
+       >>> n = Symbol('n', integer=True)
 
        >>> binomial(15, 8)
        6435
@@ -351,11 +333,6 @@ class Binomial(Function):
     """
 
     nargs = 2
-
-    @classmethod
-    @deprecated
-    def canonize(cls, r, k):
-        return cls.eval(r, k)
 
     @classmethod
     def eval(cls, r, k):

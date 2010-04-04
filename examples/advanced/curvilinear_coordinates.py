@@ -10,7 +10,7 @@ tensor, Laplace operator, ...
 """
 
 from sympy import var, sin, cos, pprint, Matrix, eye, trigsimp, Eq, \
-        Function, simplify, sinh, cosh
+        Function, simplify, sinh, cosh, expand
 
 def laplace(f, g_inv, g_det, X):
     """
@@ -52,7 +52,9 @@ def transform(name, X, Y, g_correct=None, recursive=False):
     print "Jacobian:"
     pprint(J)
     g = J.T*eye(J.shape[0])*J
-    g = g.applyfunc(lambda x: trigsimp(x, recursive=recursive))
+
+    g = g.applyfunc(expand)
+    #g = g.applyfunc(trigsimp)
     print "metric tensor g_{ij}:"
     pprint(g)
     if g_correct is not None:

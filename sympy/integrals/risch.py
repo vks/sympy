@@ -1,11 +1,8 @@
-
 from sympy.core.add import Add
 from sympy.core.mul import Mul
-from sympy.core.power import Pow
-from sympy.core.function import Function
 from sympy.core.symbol import Symbol, Wild
-from sympy.core.basic import S, C, Atom, sympify
-from sympy.core.numbers import Integer, Rational
+from sympy.core.basic import S, C, sympify
+from sympy.core.numbers import Rational
 
 from sympy.functions import exp, sin , cos , tan , cot , asin
 from sympy.functions import log, sinh, cosh, tanh, coth, asinh
@@ -13,10 +10,10 @@ from sympy.functions import log, sinh, cosh, tanh, coth, asinh
 from sympy.functions import sqrt, erf
 
 from sympy.solvers import solve
-from sympy.simplify import simplify, together
 
-from sympy.polys import Poly, quo, gcd, lcm, root_factors, \
-    monomials, factor, PolynomialError
+from sympy.polys import quo, gcd, lcm, \
+    monomials, factor, cancel, PolynomialError
+from sympy.polys.polyroots import root_factors
 
 from sympy.utilities.iterables import make_list
 
@@ -26,8 +23,9 @@ def components(f, x):
        non-integer powers. Fractional powers are collected with with
        minimal, positive exponents.
 
-       >>> from sympy import *
-       >>> x, y = symbols('xy')
+       >>> from sympy import cos, sin
+       >>> from sympy.abc import x, y
+       >>> from sympy.integrals.risch import components
 
        >>> components(sin(x)*cos(x)**2, x)
        set([x, cos(x), sin(x)])
@@ -78,8 +76,8 @@ def _symbols(name, n):
 def heurisch(f, x, **kwargs):
     """Compute indefinite integral using heuristic Risch algorithm.
 
-       This is a huristic approach to indefinite integration in finite
-       terms using extened heuristic (parallel) Risch algorithm, based
+       This is a heuristic approach to indefinite integration in finite
+       terms using the extended heuristic (parallel) Risch algorithm, based
        on Manuel Bronstein's "Poor Man's Integrator".
 
        The algorithm supports various classes of functions including
@@ -87,7 +85,7 @@ def heurisch(f, x, **kwargs):
        Bessel, Whittaker and Lambert.
 
        Note that this algorithm is not a decision procedure. If it isn't
-       able to compute antiderivative for a given function, then this is
+       able to compute the antiderivative for a given function, then this is
        not a proof that such a functions does not exist.  One should use
        recursive Risch algorithm in such case.  It's an open question if
        this algorithm can be made a full decision procedure.
@@ -96,7 +94,7 @@ def heurisch(f, x, **kwargs):
        'integrate' function in most cases,  as this procedure needs some
        preprocessing steps and otherwise may fail.
 
-       Specificaion
+       Specification
        ============
 
          heurisch(f, x, rewrite=False, hints=None)
@@ -106,7 +104,7 @@ def heurisch(f, x, **kwargs):
              x : symbol
 
              rewrite -> force rewrite 'f' in terms of 'tan' and 'tanh'
-             hints   -> a list of functions that may appear in antiderivate
+             hints   -> a list of functions that may appear in anti-derivate
 
               - hints = None          --> no suggestions at all
               - hints = [ ]           --> try to figure out
@@ -115,8 +113,9 @@ def heurisch(f, x, **kwargs):
        Examples
        ========
 
-       >>> from sympy import *
-       >>> x,y = symbols('xy')
+       >>> from sympy import tan
+       >>> from sympy.integrals.risch import heurisch
+       >>> from sympy.abc import x, y
 
        >>> heurisch(y*tan(x), x)
        y*log(1 + tan(x)**2)/2
@@ -127,7 +126,7 @@ def heurisch(f, x, **kwargs):
 
        For more information on the implemented algorithm refer to:
 
-       [2] K. Geddes, L.Stefanus, On the Risch-Norman Integration
+       [2] K. Geddes, L. Stefanus, On the Risch-Norman Integration
            Method and its Implementation in Maple, Proceedings of
            ISSAC'89, ACM Press, 212-217.
 
@@ -198,7 +197,7 @@ def heurisch(f, x, **kwargs):
             terms |= set(hints)
 
     for g in set(terms):
-        terms |= components(g.diff(x), x)
+        terms |= components(cancel(g.diff(x)), x)
 
     V = _symbols('x', len(terms))
 
@@ -212,12 +211,12 @@ def heurisch(f, x, **kwargs):
     def substitute(expr):
         return expr.subs(mapping)
 
-    diffs = [ substitute(simplify(g.diff(x))) for g in terms ]
+    diffs = [ substitute(cancel(g.diff(x))) for g in terms ]
 
     denoms = [ g.as_numer_denom()[1] for g in diffs ]
-    denom = reduce(lambda p, q: lcm(p, q, V), denoms)
+    denom = reduce(lambda p, q: lcm(p, q, *V), denoms)
 
-    numers = [ Poly.cancel(denom * g, *V) for g in diffs ]
+    numers = [ cancel(denom * g) for g in diffs ]
 
     def derivation(h):
         return Add(*[ d * h.diff(v) for d, v in zip(numers, V) ])
@@ -228,8 +227,8 @@ def heurisch(f, x, **kwargs):
                 continue
 
             if derivation(p) is not S.Zero:
-                c, q = p.as_poly(y).as_primitive()
-                return deflation(c)*gcd(q, q.diff(y))
+                c, q = p.as_poly(y).primitive()
+                return deflation(c)*gcd(q, q.diff(y)).as_basic()
         else:
             return p
 
@@ -239,7 +238,7 @@ def heurisch(f, x, **kwargs):
                 continue
 
             if derivation(y) is not S.Zero:
-                c, q = p.as_poly(y).as_primitive()
+                c, q = p.as_poly(y).primitive()
 
                 q = q.as_basic()
 
@@ -248,10 +247,10 @@ def heurisch(f, x, **kwargs):
 
                 c_split = splitter(c)
 
-                if s.as_poly(y).degree == 0:
+                if s.as_poly(y).degree() == 0:
                     return (c_split[0], q * c_split[1])
 
-                q_split = splitter(Poly.cancel((q, s), *V))
+                q_split = splitter(cancel(q / s))
 
                 return (c_split[0]*q_split[0]*s, c_split[1]*q_split[1])
         else:
@@ -279,9 +278,9 @@ def heurisch(f, x, **kwargs):
     polys = list(v_split) + [ u_split[0] ] + special.keys()
 
     s = u_split[0] * Mul(*[ k for k, v in special.iteritems() if v ])
-    a, b, c = [ p.as_poly(*V).degree for p in [s, P, Q] ]
+    a, b, c = [ p.as_poly(*V).total_degree() for p in [s, P, Q] ]
 
-    poly_denom = s * v_split[0] * deflation(v_split[1])
+    poly_denom = (s * v_split[0] * deflation(v_split[1])).as_basic()
 
     def exponent(g):
         if g.is_Pow:
@@ -314,9 +313,10 @@ def heurisch(f, x, **kwargs):
     for poly in polys:
         if poly.has(*V):
             try:
-                factorization = factor(poly, *V)
+                factorization = factor(poly, greedy=True)
             except PolynomialError:
                 factorization = poly
+            factorization = poly
 
             if factorization.is_Mul:
                 reducibles |= set(factorization.args)
@@ -333,7 +333,7 @@ def heurisch(f, x, **kwargs):
             else:
                 continue
 
-            irreducibles |= set(root_factors(poly, z, domain=field))
+            irreducibles |= set(root_factors(poly, z, filter=field))
 
         log_coeffs, log_part = [], []
         B = _symbols('B', len(irreducibles))
@@ -347,7 +347,7 @@ def heurisch(f, x, **kwargs):
 
         candidate = poly_part/poly_denom + Add(*log_part)
 
-        h = together(F - derivation(candidate) / denom)
+        h = F - derivation(candidate) / denom
 
         numer = h.as_numer_denom()[0].expand()
 
@@ -386,7 +386,7 @@ def heurisch(f, x, **kwargs):
                 antideriv = antideriv.subs(coeff, S.Zero)
 
         antideriv = antideriv.subs(rev_mapping)
-        antideriv = simplify(antideriv).expand()
+        antideriv = cancel(antideriv).expand()
 
         if antideriv.is_Add:
             antideriv = antideriv.as_independent(x)[1]
@@ -400,4 +400,3 @@ def heurisch(f, x, **kwargs):
                 return indep * result
 
         return None
-

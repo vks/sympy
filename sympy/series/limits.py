@@ -1,4 +1,4 @@
-from sympy.core import S, Add, sympify, Basic, PoleError, Mul, oo, C
+from sympy.core import S, Add, sympify, Basic, PoleError, Mul, oo
 from gruntz import gruntz
 
 def limit(e, z, z0, dir="+"):
@@ -13,8 +13,8 @@ def limit(e, z, z0, dir="+"):
 
     Examples:
 
-    >>> from sympy import limit, sin, Symbol
-    >>> x = Symbol('x')
+    >>> from sympy import limit, sin, Symbol, oo
+    >>> from sympy.abc import x
     >>> limit(sin(x)/x, x, 0)
     1
     >>> limit(1/x, x, 0, dir="+")
@@ -108,7 +108,7 @@ def heuristics(e, z, z0, dir):
         for a in e.args:
             r.append(a.limit(z, z0, dir))
         return Add(*r)
-    elif isinstance(e, C.Function):
+    elif e.is_Function:
         return e.subs(e.args[0], heuristics(e.args[0], z, z0, dir))
     msg = "Don't know how to calculate the limit(%s, %s, %s, dir=%s), sorry."
     raise PoleError(msg % (e, z, z0, dir))
@@ -119,8 +119,8 @@ class Limit(Basic):
 
     Examples:
 
-    >>> from sympy import limit, sin, Symbol
-    >>> x = Symbol('x')
+    >>> from sympy import Limit, sin, Symbol
+    >>> from sympy.abc import x
     >>> Limit(sin(x)/x, x, 0)
     Limit(sin(x)/x, x, 0)
     >>> Limit(1/x, x, 0, dir="-")

@@ -282,8 +282,6 @@ def test_LUdecomp():
     P, L, Dee, U = M.LUdecompositionFF()
     assert P*M == L*Dee.inv()*U
 
-
-
 def test_LUsolve():
     A = Matrix([[2,3,5],
                 [3,6,2],
@@ -298,6 +296,31 @@ def test_LUsolve():
     x = Matrix(3,1,[-1,2,5])
     b = A*x
     soln = A.LUsolve(b)
+    assert soln == x
+
+def test_QRsolve():
+    A = Matrix([[2,3,5],
+                [3,6,2],
+                [8,3,6]])
+    x = Matrix(3,1,[3,7,5])
+    b = A*x
+    soln = A.QRsolve(b)
+    assert soln == x
+    x = Matrix([[1,2],[3,4],[5,6]])
+    b = A*x
+    soln = A.QRsolve(b)
+    assert soln == x
+
+    A = Matrix([[0,-1,2],
+                [5,10,7],
+                [8,3,4]])
+    x = Matrix(3,1,[-1,2,5])
+    b = A*x
+    soln = A.QRsolve(b)
+    assert soln == x
+    x = Matrix([[7,8],[9,10],[11,12]])
+    b = A*x
+    soln = A.QRsolve(b)
     assert soln == x
 
 def test_inverse():
@@ -381,9 +404,9 @@ def test_nullspace():
                 [-1,-3,0,1,0,9,3]])
     out, tmp = M.rref()
     assert out == Matrix([[1,3,0,0,2,0,0],
-                               [0,0,0,1,2,0,0],
-                               [0,0,0,0,0,1,R(1)/3],
-                               [0,0,0,0,0,0,0]])
+                          [0,0,0,1,2,0,0],
+                          [0,0,0,0,0,1,R(1)/3],
+                          [0,0,0,0,0,0,0]])
 
     # now check the vectors
     basis = M.nullspace()
@@ -391,6 +414,10 @@ def test_nullspace():
     assert basis[1] == Matrix([0,0,1,0,0,0,0])
     assert basis[2] == Matrix([-2,0,0,-2,1,0,0])
     assert basis[3] == Matrix([0,0,0,0,0,R(-1)/3, 1])
+
+    # issue 1698; just see that we can do it when rows > cols
+    M = Matrix([[1,2],[2,4],[3,6]])
+    assert M.nullspace()
 
 def test_wronskian():
     x = Symbol('x')
@@ -806,12 +833,12 @@ def test_subs():
 
 def test_simplify():
     x,y,f,n = symbols('xyfn')
-    M = Matrix([ [    1/x + 1/y,               (x+x*y)/ x             ],
-                 [(f(x)+y*f(x))/f(x), (2 * (1/n - cos(n * pi)/n))/ pi ]
+    M = Matrix([ [    1/x + 1/y,               (x + x*y)/ x             ],
+                 [(f(x) + y*f(x))/f(x), 2 * (1/n - cos(n * pi)/n)/ pi ]
                  ])
     M.simplify()
-    assert M ==  Matrix([[(x+y)/(x*y),               1 + y           ],
-                         [   1 + y,       (2 - 2*cos(pi*n))/ (pi*n)   ]])
+    assert M ==  Matrix([[(x + y)/(x * y),               1 + y           ],
+                         [   1 + y,       (2 - 2*cos(pi*n))/(pi*n) ]])
 
 def test_transpose():
     M = Matrix([[1,2,3,4,5,6,7,8,9,0],
@@ -1050,14 +1077,22 @@ def test_vech():
     assert m_vech.cols == 1
     for i in xrange(3):
         assert m_vech[i] == i + 1
-    m_vech = m.vech(diagonal = False)
+    m_vech = m.vech(diagonal=False)
     assert m_vech[0] == 2
+    x,y = symbols('xy')
+    m = Matrix([ [1, x*(x+y)], [y*x+x**2, 1] ])
+    m_vech = m.vech(diagonal=False)
+    assert m_vech[0] == y*x+x**2
+    x,y = symbols('xy')
+    m = Matrix([ [1, x*(x+y)], [y*x, 1] ])
+    m_vech = m.vech(diagonal=False, check_symmetry=False)
+    assert m_vech[0] == y*x
 
-def test_vech_TypeError():
+def test_vech_errors():
     m = Matrix([ [1,3] ])
     raises(TypeError, 'm.vech()')
     m = Matrix([ [1,3], [2,4] ])
-    raises(TypeError, 'm.vech()')
+    raises(ValueError, 'm.vech()')
 
 def test_block_diag1():
     x, y, z = symbols("x y z")
@@ -1127,3 +1162,18 @@ def test_inv_block():
     assert A.inv(try_block_diag=True, method="ADJ") == block_diag([
         a.inv(method="ADJ"), a.inv(method="ADJ"), b.inv(method="ADJ"),
         a.inv(method="ADJ"), c.inv(method="ADJ"), a.inv(method="ADJ")])
+
+def test_creation():
+    """
+    Check that matrix dimensions can be specified using any reasonable type
+    (see issue 1515).
+    """
+    raises(ValueError, 'zeros((3, 0))')
+    raises(ValueError, 'zeros((1,2,3,4))')
+    assert zeros(3L) == zeros(3)
+    assert zeros(Integer(3)) == zeros(3)
+    assert zeros(3.) == zeros(3)
+    assert eye(3L) == eye(3)
+    assert eye(Integer(3)) == eye(3)
+    assert eye(3.) == eye(3)
+    assert ones((3L, Integer(4))) == ones((3, 4))

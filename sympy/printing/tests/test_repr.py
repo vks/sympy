@@ -1,7 +1,6 @@
 from sympy.utilities.pytest import XFAIL
 from sympy import Symbol, symbols, Function, Integer, Matrix, nan, oo, abs, \
-    Rational, Real, S, WildFunction
-from sympy.polys.polynomial import Poly
+    Rational, Real, S, WildFunction, raises
 from sympy.geometry import Point, Circle, Ellipse
 from sympy.printing import srepr
 
@@ -75,11 +74,6 @@ def test_NegativeOne():
 def test_One():
     sT(S.One, "One")
 
-def test_Poly():
-    sT(Poly(7, x), "Poly([(Integer(7), (0,))], Symbol('x'), order='grlex')")
-    sT(Poly(2*x*y + 7, x, y), "Poly([(Integer(2), (1, 1)), (Integer(7), (0, 0))], Symbol('x'), Symbol('y'), order='grlex')")
-    sT(Poly(2*x*y - 7, x, y, order='grevlex'), "Poly([(Integer(2), (1, 1)), (Integer(-7), (0, 0))], Symbol('x'), Symbol('y'), order='grevlex')")
-
 def test_Rational():
     sT(Rational(1,3), "Rational(1, 3)")
     sT(Rational(-1,3), "Rational(-1, 3)")
@@ -104,3 +98,5 @@ def test_WildFunction():
 def test_Zero():
     sT(S.Zero, "Zero")
 
+def test_settins():
+    raises(TypeError, 'srepr(x, method="garbage")')

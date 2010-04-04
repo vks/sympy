@@ -21,11 +21,11 @@ from sympy.core.symbol import Symbol, Wild
 from sympy.core.relational import Equality
 from sympy.core.numbers import ilcm
 
-from sympy.functions import sqrt, log, exp, LambertW
+from sympy.functions import log, exp, LambertW
 from sympy.simplify import simplify, collect
 from sympy.matrices import Matrix, zeros
 from sympy.polys import roots
-from sympy.functions.elementary.piecewise import Piecewise, piecewise_fold
+from sympy.functions.elementary.piecewise import piecewise_fold
 
 from sympy.utilities import any, all
 from sympy.utilities.iterables import iff
@@ -59,7 +59,8 @@ def guess_solve_strategy(expr, symbol):
     Examples
     ========
     >>> from sympy import Symbol, Rational
-    >>> x = Symbol('x')
+    >>> from sympy.solvers.solvers import guess_solve_strategy
+    >>> from sympy.abc import x
     >>> guess_solve_strategy(x**2 + 1, x)
     0
     >>> guess_solve_strategy(x**Rational(1,2) + 1, x)
@@ -129,8 +130,8 @@ def solve(f, *symbols, **flags):
        To solve equations and systems of equations like recurrence relations
        or differential equations, use rsolve() or dsolve(), respectively.
 
-       >>> from sympy import *
-       >>> x,y = symbols('xy')
+       >>> from sympy import I, solve
+       >>> from sympy.abc import x, y
 
        Solve a polynomial equation:
 
@@ -230,6 +231,11 @@ def solve(f, *symbols, **flags):
             if poly is None:
                 raise NotImplementedError("Cannot solve equation " + str(f) + " for "
                     + str(symbol))
+            # for cubics and quartics, if the flag wasn't set, DON'T do it
+            # by default since the results are quite long. Perhaps one could
+            # base this decision on a certain crtical length of the roots.
+            if poly.degree > 2:
+                flags['simplified'] = flags.get('simplified', False)
             result = roots(poly, cubics=True, quartics=True).keys()
 
         elif strategy == GS_RATIONAL:
@@ -254,7 +260,7 @@ def solve(f, *symbols, **flags):
                 if len(exponents_denom) == 1:
                     m = exponents_denom[0]
                 else:
-                    # get the GCD of the denominators
+                    # get the LCM of the denominators
                     m = reduce(ilcm, exponents_denom)
                 # x -> y**m.
                 # we assume positive for simplification purposes
@@ -367,7 +373,7 @@ def solve(f, *symbols, **flags):
                 matrix = zeros((n, m + 1))
 
                 for i, poly in enumerate(polys):
-                    for coeff, monom in poly.iter_terms():
+                    for monom, coeff in poly.terms():
                         try:
                             j = list(monom).index(1)
                             matrix[i, j] = coeff
@@ -411,8 +417,8 @@ def solve_linear_system(system, *symbols, **flags):
        Then solutions are found using back-substitution. This approach
        is more efficient and compact than the Gauss-Jordan method.
 
-       >>> from sympy import *
-       >>> x, y = symbols('xy')
+       >>> from sympy import Matrix, solve_linear_system
+       >>> from sympy.abc import x, y
 
        Solve the following system:
 
@@ -537,8 +543,9 @@ def solve_undetermined_coeffs(equ, coeffs, sym, **flags):
        SymPy expressions. Specification of parameters and variable is
        obligatory for efficiency and simplicity reason.
 
-       >>> from sympy import *
-       >>> a, b, c, x = symbols('a', 'b', 'c', 'x')
+       >>> from sympy import Eq
+       >>> from sympy.abc import a, b, c, x
+       >>> from sympy.solvers import solve_undetermined_coeffs
 
        >>> solve_undetermined_coeffs(Eq(2*a*x + a+b, x), [a, b], x)
        {a: 1/2, b: -1/2}
@@ -609,8 +616,8 @@ def tsolve(eq, sym):
     not unique. In some cases, a complex solution may be returned
     even though a real solution exists.
 
-        >>> from sympy import *
-        >>> x = Symbol('x')
+        >>> from sympy import tsolve, log
+        >>> from sympy.abc import x
 
         >>> tsolve(3**(2*x+5)-4, x)
         [(-5*log(3) + log(4))/(2*log(3))]
@@ -750,7 +757,8 @@ def nsolve(*args, **kwargs):
 
     For one-dimensional functions the syntax is simplified:
 
-    >>> from sympy import sin
+    >>> from sympy import sin, nsolve
+    >>> from sympy.abc import x
     >>> nsolve(sin(x), x, 2)
     3.14159265358979
     >>> nsolve(sin(x), 2)
@@ -782,11 +790,15 @@ def nsolve(*args, **kwargs):
         if isinstance(f, Equality):
             f = f.lhs - f.rhs
         f = f.evalf()
-        atoms = set(s for s in f.atoms() if isinstance(s, Symbol))
+        atoms = f.atoms(Symbol)
         if fargs is None:
             fargs = atoms.copy().pop()
         if not (len(atoms) == 1 and (fargs in atoms or fargs[0] in atoms)):
             raise ValueError('expected a one-dimensional and numerical function')
+
+        # the function is much better behaved if there is no denominator
+        f = f.as_numer_denom()[0]
+
         f = lambdify(fargs, f, modules)
         return findroot(f, x0, **kwargs)
     if len(fargs) > f.cols:
@@ -806,3 +818,4 @@ def nsolve(*args, **kwargs):
     # solve the system numerically
     x = findroot(f, x0, J=J, **kwargs)
     return x
+

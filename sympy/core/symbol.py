@@ -11,6 +11,7 @@ class Symbol(Atom):
        commutative = True
 
     You can override the default assumptions in the constructor::
+       >>> from sympy import symbols
        >>> A,B = symbols('AB', commutative = False)
        >>> bool(A*B != B*A)
        True
@@ -29,6 +30,7 @@ class Symbol(Atom):
                 **assumptions):
         """if dummy == True, then this Symbol is totally unique, i.e.::
 
+        >>> from sympy import Symbol
         >>> bool(Symbol("x") == Symbol("x")) == True
         True
 
@@ -62,7 +64,7 @@ class Symbol(Atom):
         return (self.is_commutative, self.name)
 
     def as_dummy(self):
-        return Dummy(self.name, **self.assumptions0)
+        return Dummy(self.name, self.is_commutative, **self.assumptions0)
 
     def __call__(self, *args):
         return Function(self.name, nargs=len(args))(*args, **self.assumptions0)
@@ -83,6 +85,7 @@ class Dummy(Symbol):
 
        use this through Symbol:
 
+       >>> from sympy import Symbol
        >>> x1 = Symbol('x', dummy=True)
        >>> x2 = Symbol('x', dummy=True)
        >>> bool(x1 == x2)
@@ -157,23 +160,22 @@ class Wild(Symbol):
         return (self.name, self.exclude, self.properties )
 
     # TODO add check against another Wild
-    def matches(pattern, expr, repl_dict={}, evaluate=False):
-        for p,v in repl_dict.items():
-            if p==pattern:
-                if v==expr: return repl_dict
+    def matches(self, expr, repl_dict={}, evaluate=False):
+        if self in repl_dict:
+            if repl_dict[self] == expr:
+                return repl_dict
+            else:
                 return None
-        if pattern.exclude:
-            for x in pattern.exclude:
+        if self.exclude:
+            for x in self.exclude:
                 if x in expr:
                     return None
-                #else:
-                #    print x, expr, pattern, expr, pattern.exclude
-        if pattern.properties:
-            for f in pattern.properties:
+        if self.properties:
+            for f in self.properties:
                 if not f(expr):
                     return None
         repl_dict = repl_dict.copy()
-        repl_dict[pattern] = expr
+        repl_dict[self] = expr
         return repl_dict
 
     def __call__(self, *args, **assumptions):
@@ -186,11 +188,12 @@ def symbols(*names, **kwargs):
     argument, which can be a string, then each character
     forms a separate symbol, or a sequence of strings.
 
+    >>> from sympy import symbols
     >>> x, y, z = symbols('xyz')
 
     Please note that this syntax is deprecated and will be dropped in a
     future version of sympy. Use comma or whitespace separated characters
-    instead. Currently the old behavoiur is standard, this can be changed
+    instead. Currently the old behavior is standard, this can be changed
     using the 'each_char' keyword:
 
     >>> symbols('xyz', each_char=False)
@@ -254,6 +257,7 @@ def var(*names, **kwargs):
     the parent's *global* namespace.  It's recommended not to use "var" in
     library code, it is better to use symbols() instead.
 
+    >>> from sympy import var
     >>> var('m')
     m
     >>> var('n xx yy zz')
@@ -285,6 +289,6 @@ def var(*names, **kwargs):
         # doc
         del frame
 
-from basic import Basic, Atom, S, C
+from basic import Basic, S, C
 from sympify import sympify
 from function import Function

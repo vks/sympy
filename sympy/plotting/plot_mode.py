@@ -1,7 +1,6 @@
-from sympy import Basic, Symbol, symbols, sympify
+from sympy import Symbol, symbols, sympify
 from plot_interval import PlotInterval
 from plot_object import PlotObject
-from color_scheme import ColorScheme
 from util import parse_option_string
 from sympy.geometry.entity import GeometryEntity
 
@@ -107,7 +106,7 @@ class PlotMode(PlotObject):
             usually the number of functions to
             be evaluated in plotting.
 
-        For example, a cartesian function y = f(x) has
+        For example, a Cartesian function y = f(x) has
         one i_var (x) and one d_var (y). A parametric
         form x,y,z = f(u,v), f(u,v), f(u,v) has two
         two i_vars (u,v) and three d_vars (x,y,z).

@@ -1,4 +1,4 @@
-from sympy.core.basic import Basic, S, sympify
+from sympy.core.basic import S, sympify
 from sympy.simplify import simplify
 from sympy.geometry.exceptions import GeometryError
 from sympy.functions.elementary.miscellaneous import sqrt
@@ -12,6 +12,7 @@ class Point(GeometryEntity):
 
     Examples:
     ======
+        >>> from sympy.geometry import Point
         >>> Point(1, 2)
         Point(1, 2)
         >>> Point([1, 2])
@@ -39,8 +40,8 @@ class Point(GeometryEntity):
 
         Examples:
         =========
-            >>> from sympy import *
-            >>> x = Symbol('x')
+            >>> from sympy import Point
+            >>> from sympy.abc import x
             >>> p1,p2 = Point(0, 0), Point(1, 1)
             >>> p3,p4,p5 = Point(2, 2), Point(x, x), Point(1, 2)
             >>> Point.is_collinear(p1, p2, p3, p4)
@@ -90,6 +91,7 @@ class Point(GeometryEntity):
 
         Example:
         ========
+            >>> from sympy.geometry import Point
             >>> p1,p2 = Point(-1, 0), Point(1, 0)
             >>> p3,p4 = Point(0, 1), Point(-1, 2)
             >>> Point.is_concyclic(p1, p2, p3)
@@ -155,6 +157,7 @@ class Point(GeometryEntity):
 
         Example:
         ========
+            >>> from sympy.geometry import Point
             >>> p1,p2 = Point(1, 1), Point(4, 5)
             >>> Point.distance(p1, p2)
             5
@@ -169,6 +172,7 @@ class Point(GeometryEntity):
 
         Example:
         ========
+            >>> from sympy.geometry import Point
             >>> p1,p2 = Point(1, 1), Point(13, 5)
             >>> Point.midpoint(p1, p2)
             Point(7, 3)
@@ -183,10 +187,9 @@ class Point(GeometryEntity):
 
         Example:
         ========
-            >>> from sympy import *
+            >>> from sympy import Point, Rational
             >>> Point(Rational(1,2), Rational(3,2)).evalf()
             Point(0.5, 1.5)
-
         """
         return Point([x.evalf() for x in self])
 
@@ -236,7 +239,7 @@ class Point(GeometryEntity):
 
     def __neg__(self):
         """
-        Create a new point where each oordinate in this point is negated.
+        Create a new point where each coordinate in this point is negated.
         """
         return Point( [-x for x in self] )
 

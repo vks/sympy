@@ -2,6 +2,7 @@ from basic import Basic, SingletonMeta, S
 from sympify import _sympify
 from sympy.mpmath import mpi
 
+
 class Set(Basic):
     """
     Represents any kind of set.
@@ -16,7 +17,7 @@ class Set(Basic):
         Returns the union of 'self' and 'other'. As a shortcut it is possible
         to use the '+' operator:
 
-        >>> from sympy import *
+        >>> from sympy import Interval
 
         >>> Interval(0, 1).union(Interval(2, 3))
         Union([0, 1], [2, 3])
@@ -36,7 +37,7 @@ class Set(Basic):
         """
         Returns the intersection of 'self' and 'other'.
 
-        >>> from sympy import *
+        >>> from sympy import Interval
 
         >>> Interval(1, 3).intersect(Interval(1, 2))
         [1, 2]
@@ -54,7 +55,7 @@ class Set(Basic):
 
         As a shortcut it is possible to use the '~' or '-' operators:
 
-        >>> from sympy import *
+        >>> ##
 
         >>> Interval(0, 1).complement
         Union((-oo, 0), (1, oo))
@@ -75,7 +76,7 @@ class Set(Basic):
         """
         The infimum of 'self'.
 
-        >>> from sympy import *
+        >>> ##
 
         >>> Interval(0, 1).inf
         0
@@ -93,7 +94,7 @@ class Set(Basic):
     def sup(self):
         """ The supremum of 'self'.
 
-        >>> from sympy import *
+        >>> ##
 
         >>> Interval(0, 1).sup
         1
@@ -113,7 +114,7 @@ class Set(Basic):
 
         As a shortcut it is possible to use the 'in' operator:
 
-        >>> from sympy import *
+        >>> from sympy import Interval
 
         >>> Interval(0, 1).contains(0.5)
         True
@@ -130,7 +131,7 @@ class Set(Basic):
         """
         Returns True if 'other' is a subset of 'self'.
 
-        >>> from sympy import *
+        >>> from sympy import Interval
 
         >>> Interval(0, 1).contains(0)
         True
@@ -148,7 +149,7 @@ class Set(Basic):
         """
         The (Lebesgue) measure of 'self'.
 
-        >>> from sympy import *
+        >>> ##
 
         >>> Interval(0, 1).measure
         1
@@ -175,7 +176,10 @@ class Set(Basic):
         return self.complement
 
     def __contains__(self, other):
-        return self.contains(other)
+        result = self.contains(other)
+        if not isinstance(result, bool):
+            raise TypeError('contains did not evaluate to a bool: %r' % result)
+        return result
 
     def _eval_subs(self, old, new):
         if self == old: return new
@@ -189,6 +193,10 @@ class Set(Basic):
                 new_args.append(arg)
         return self.__class__(*new_args)
 
+    @property
+    def is_number(self):
+        return False
+
 class Interval(Set):
     """
     Represents a real interval as a Set.
@@ -201,7 +209,7 @@ class Interval(Set):
         will be open on the right.
 
     Examples:
-        >>> from sympy import *
+        >>> from sympy import Symbol, Interval, sets
 
         >>> Interval(0, 1)
         [0, 1]
@@ -252,7 +260,7 @@ class Interval(Set):
         The left end point of 'self'. This property takes the same value as the
         'inf' property.
 
-        >>> from sympy import *
+        >>> ##
 
         >>> Interval(0, 1).start
         0
@@ -268,7 +276,7 @@ class Interval(Set):
         The right end point of 'self'. This property takes the same value as the
         'sup' property.
 
-        >>> from sympy import *
+        >>> ##
 
         >>> Interval(0, 1).end
         1
@@ -283,7 +291,7 @@ class Interval(Set):
         """
         True if 'self' is left-open.
 
-        >>> from sympy import *
+        >>> ##
 
         >>> Interval(0, 1, left_open=True).left_open
         True
@@ -298,7 +306,7 @@ class Interval(Set):
         """
         True if 'self' is right-open.
 
-        >>> from sympy import *
+        >>> ##
 
         >>> Interval(0, 1, right_open=True).right_open
         True
@@ -395,7 +403,7 @@ class Union(Set):
     Represents a union of sets as a Set.
 
     Examples:
-        >>> from sympy import *
+        >>> from sympy import Union, Interval
 
         >>> Union(Interval(1, 2), Interval(3, 4))
         Union([1, 2], [3, 4])
@@ -525,10 +533,9 @@ class Union(Set):
         return complement
 
     def _contains(self, other):
-        for set in self.args:
-            if other in set:
-                return True
-        return False
+        from sympy.logic.boolalg import Or
+        or_args = [the_set.contains(other) for the_set in self.args]
+        return Or(*or_args)
 
     @property
     def _measure(self):
@@ -543,7 +550,7 @@ class EmptySet(Set):
     as S.EmptySet.
 
     Examples:
-        >>> from sympy import *
+        >>> from sympy import S, Interval
 
         >>> S.EmptySet
         EmptySet()
