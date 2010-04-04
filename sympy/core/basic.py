@@ -2050,7 +2050,7 @@ class Basic(AssumeMeths):
            For any expression, the set {e.could_extract_minus_sign(),
            (-e).could_extract_minus_sign()} must be {True, False}.
 
-           >>> from sympy import *
+           >>> from sympy import symbols
            >>> x, y, z = symbols("xyz")
            >>> (x-y).could_extract_minus_sign() != (y-x).could_extract_minus_sign()
            True
