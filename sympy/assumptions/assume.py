@@ -63,9 +63,10 @@ def get_local_assumptions(go_back=None):
     f = inspect.currentframe()
     gone_back = 0
     while f.f_back is not None:
-        if go_back is not None and gone_back < go_back:
-            f = f.f_back
-            gone_back += 1
+        if go_back is not None and gone_back >= go_back:
+            break
+        f = f.f_back
+        gone_back += 1
         result = f.f_locals.get(LOCALCONTEXT)
         if result is not None:
             return result
