@@ -392,7 +392,6 @@ def test_other_symbol():
 
     raises(AttributeError, "x.is_real = False")
 
-
 def test_other_symbol_fail1():
     # XXX x.is_even currently will be True
     x = Symbol('x', odd=False)
@@ -407,7 +406,6 @@ def test_other_symbol_fail2():
     assert x.is_odd == None
     assert x.is_integer == None
 
-
 def test_issue749():
     a = Symbol('a', real=False)
 
@@ -418,7 +416,6 @@ def test_issue749():
     assert a.is_nonnegative == False
     assert a.is_nonpositive == False
     assert a.is_zero        == False
-
 
 def test_issue726():
     """catch: hash instability"""
@@ -447,7 +444,6 @@ def test_hash_vs_typeinfo():
     assert hash(x1) == hash(x2)
     assert x1 == x2
 
-
 @XFAIL  # our __eq__ just does not look at it (yet)
 def test_hash_vs_typeinfo_2():
     """different typeinfo should mean !eq"""
@@ -456,7 +452,6 @@ def test_hash_vs_typeinfo_2():
     x1= Symbol('x', even=True)
 
     assert x != x1
-
 
 def test_hash_vs_eq():
     """catch: different hash for equal objects"""
