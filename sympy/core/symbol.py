@@ -71,7 +71,12 @@ class Symbol(Atom, Expr, Boolean):
     __xnew__       = staticmethod(__new_stage2__)            # never cached (e.g. dummy)
     __xnew_cached_ = staticmethod(cacheit(__new_stage2__))   # symbols are always cached
 
-    def __init__(self, name, commutative=True, **assumptions):
+    def __init__(self, name, commutative=True, go_back=2, **assumptions):
+        """Create a symbol with given assumptions.
+
+        The `go_back` argument specifies how many frames you have to go back to
+        insert the assumptions into the correct scope.
+        """
         # register new-style assumptions
         # remove kwargs which are not assumptions
         assumptions['commutative'] = commutative
@@ -86,9 +91,9 @@ class Symbol(Atom, Expr, Boolean):
             # add assumptions to local scope (not to an outer scope)
             # make sure not to overwrite assumptions
             from sympy.assumptions import get_local_assumptions, set_local_assumptions
-            a = get_local_assumptions(go_back=2)
+            a = get_local_assumptions(go_back=go_back)
             if a is None:
-                a = set_local_assumptions(go_back=2)
+                a = set_local_assumptions(go_back=go_back)
             a.add(_dict2assumptions(self, assumptions))
 
     def __getnewargs__(self):
@@ -115,6 +120,7 @@ class Symbol(Atom, Expr, Boolean):
     def is_number(self):
         return False
 
+# TODO: local assumptions for Dummy, Temporary and Wild
 class Dummy(Symbol):
     """Dummy Symbol
 
@@ -251,6 +257,7 @@ def symbols(*names, **kwargs):
     if not 'each_char' in kwargs and len(names) == 1 and \
     isinstance(names[0], str) and (' ' in names[0] or ',' in names[0]):
         kwargs['each_char'] = False
+    go_back = kwargs.pop('go_back', 3)
     if not kwargs.pop("each_char", True):
         # the new way:
         s = names[0]
@@ -261,7 +268,7 @@ def symbols(*names, **kwargs):
             # skip empty strings
             if not t:
                 continue
-            sym = Symbol(t, **kwargs)
+            sym = Symbol(t, go_back=go_back, **kwargs)
             res.append(sym)
         res = tuple(res)
         if len(res) == 0:   # var('')
@@ -310,6 +317,7 @@ def var(*names, **kwargs):
     frame = inspect.currentframe().f_back
     try:
         kwargs['each_char'] = False
+        kwargs['go_back'] = 4
         s = symbols(*names, **kwargs)
         if s is None:
             return s
