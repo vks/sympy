@@ -17,6 +17,8 @@ def _dict2assumptions(expr, assumptions):
     from sympy.logic.boolalg import And
     return And(*(Assume(expr, a, b) for a, b in assumptions.iteritems()))
 
+_possible_assumptions = None # set of possible assumptions
+
 class Symbol(Atom, Expr, Boolean):
     """
     Assumptions::
@@ -68,6 +70,26 @@ class Symbol(Atom, Expr, Boolean):
 
     __xnew__       = staticmethod(__new_stage2__)            # never cached (e.g. dummy)
     __xnew_cached_ = staticmethod(cacheit(__new_stage2__))   # symbols are always cached
+
+    def __init__(self, name, commutative=True, **assumptions):
+        # register new-style assumptions
+        # remove kwargs which are not assumptions
+        assumptions['commutative'] = commutative
+        global _possible_assumptions
+        if _possible_assumptions is None:
+            from sympy.assumptions import Q
+            _possible_assumptions = set(q for q in dir(Q) if not q.startswith('_'))
+        for r in assumptions.copy().iterkeys():
+            if r not in _possible_assumptions:
+                del assumptions[r]
+        if assumptions:
+            # add assumptions to local scope (not to an outer scope)
+            # make sure not to overwrite assumptions
+            from sympy.assumptions import get_local_assumptions, set_local_assumptions
+            a = get_local_assumptions(go_back=2)
+            if a is None:
+                a = set_local_assumptions(go_back=2)
+            a.add(_dict2assumptions(self, assumptions))
 
     def __getnewargs__(self):
         return (self.name, self.is_commutative)

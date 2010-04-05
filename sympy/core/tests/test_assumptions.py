@@ -1,5 +1,6 @@
-from sympy.core import Symbol, S, Rational, Integer
+from sympy.core import Symbol, symbols, S, Rational, Integer
 from sympy.utilities.pytest import XFAIL, raises
+from sympy.assumptions import Assume, Q, ask, get_local_assumptions
 from sympy import I, sqrt
 
 def test_symbol_unset():
@@ -470,3 +471,11 @@ def test_hash_vs_eq():
 
     assert a == b
     assert ha== hb
+
+def test_newstyle_assumptions():
+    x = Symbol('x', even=True)
+    assert (Assume(x, Q.commutative) & Assume(x, Q.even) in
+            get_local_assumptions())
+    y = symbols('y', real=False)
+    assert ask(y, Q.real) is False
+

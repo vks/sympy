@@ -35,29 +35,37 @@ class AssumptionsContext(set):
 
 LOCALCONTEXT = '__sympy_local_assumptions'
 
-def set_local_assumptions():
+def set_local_assumptions(go_back=1):
     """Set a local assumption context and return it.
 
-    By default, this is done in the current local scope, this can be changed
-    using the `scope` argument.
+    By default, this is done in the current local scope, if you want to go back
+    multiple frames, use the `go_back` argument.
 
     This will overwrite any previous (local) assumptions."""
-    f = inspect.currentframe().f_back
+    f = inspect.currentframe()
+    for _ in xrange(go_back):
+        f = f.f_back
     c = AssumptionsContext()
     f.f_locals[LOCALCONTEXT] = c
     return c
 
-def get_local_assumptions():
+def get_local_assumptions(go_back=None):
     """Return the current local assumption context.
 
     This can be in an outer scope if `set_local_assumptions()` has not been yet
-    called in the current scope.
+    called in the current scope, unless `go_back` is set. In this case it will
+    go back exactly `go_back` frames to look for local assumptions in this
+    scope.
 
-    If there is no defined assumption context in any scope, None is returned.
+    If there is no defined assumption context in any (or the specified) scope,
+    None is returned.
     """
     f = inspect.currentframe()
+    gone_back = 0
     while f.f_back is not None:
-        f = f.f_back
+        if go_back is not None and gone_back < go_back:
+            f = f.f_back
+            gone_back += 1
         result = f.f_locals.get(LOCALCONTEXT)
         if result is not None:
             return result
