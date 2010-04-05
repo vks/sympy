@@ -6,6 +6,17 @@ from sympy.logic.boolalg import Boolean
 
 import re
 
+def _dict2assumptions(expr, assumptions):
+    """dict with assumptions about expr -> combination of Assume objects
+
+    >>> _dict2assumptions(x, {'integer':True, 'positive':True})
+    And(Assume(x, 'integer', True), Assume(x, 'positive', True))
+    """
+    assert assumptions, 'got no assumption'
+    from sympy.assumptions import Assume
+    from sympy.logic.boolalg import And
+    return And(*(Assume(expr, a, b) for a, b in assumptions.iteritems()))
+
 class Symbol(Atom, Expr, Boolean):
     """
     Assumptions::
