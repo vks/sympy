@@ -1,7 +1,6 @@
 """Module for querying SymPy objects about assumptions."""
 import copy
 from sympy.core import sympify
-from sympy.utilities.source import get_class
 from sympy.assumptions import get_local_assumptions, AssumptionsContext
 from sympy.assumptions.assume import eliminate_assume
 from sympy.logic.boolalg import to_cnf, conjuncts, disjuncts, \
@@ -66,10 +65,18 @@ def ask(expr, key, assumptions=True):
         local_assumptions = AssumptionsContext()
     assumptions = And(assumptions, And(*local_assumptions))
 
+    import sympy.assumptions.handlers
+    import sympy.assumptions.handlers.sets
+    import sympy.assumptions.handlers.order
+    import sympy.assumptions.handlers.calculus
+    import sympy.assumptions.handlers.ntheory
     # direct resolution method, no logic
     resolutors = []
     for handler in handlers_dict[key]:
-        resolutors.append( get_class(handler) )
+        if isinstance(handler, str):
+            # FIXME: code injection
+            handler = eval(handler)
+        resolutors.append(handler)
     res, _res = None, None
     mro = expr.func.__mro__
     for handler in resolutors:
