@@ -58,7 +58,7 @@ def test_context():
     # And, Or, Not can also be added
     a.add(~Assume(x, Q.positive))
     a.add(Assume(y, Q.even) & Assume(y, Q.positive))
-    a.add(Assume(x + y, Q.positive) | Assume(x - y), Q.negative)
+    a.add(Assume(x + y, Q.positive) | Assume(x - y, Q.negative))
 
 def test_local():
     x, y = symbols('x y')
