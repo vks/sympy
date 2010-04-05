@@ -100,6 +100,11 @@ def ask(expr, key, assumptions=True):
         local_assumptions = AssumptionsContext()
     assumptions = And(assumptions, And(*local_assumptions))
 
+    import sympy.assumptions.handlers
+    import sympy.assumptions.handlers.sets
+    import sympy.assumptions.handlers.order
+    import sympy.assumptions.handlers.calculus
+    import sympy.assumptions.handlers.ntheory
     # direct resolution method, no logic
     res = eval_predicate(key, expr, assumptions)
     if res is not None:
