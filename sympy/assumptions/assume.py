@@ -1,5 +1,6 @@
 # doctests are disabled because of issue #1521
 from sympy.core import Basic, Symbol
+from sympy.logic.boolalg import And, Or, Not
 import inspect
 
 class AssumptionsContext(set):
@@ -27,7 +28,8 @@ class AssumptionsContext(set):
     def add(self, *assumptions):
         """Add an assumption."""
         for a in assumptions:
-            assert type(a) is Assume, 'can only store instances of Assume'
+            assert type(a) in (Assume, And, Or, Not), \
+                    'can only store Assume, And, Or or Not'
             super(AssumptionsContext, self).add(a)
 
 LOCALCONTEXT = '__sympy_local_assumptions'
