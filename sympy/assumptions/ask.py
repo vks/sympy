@@ -1,5 +1,4 @@
 """Module for querying SymPy objects about assumptions."""
-import inspect
 import copy
 from sympy.core import sympify
 from sympy.utilities.source import get_class
@@ -72,7 +71,7 @@ def ask(expr, key, assumptions=True):
     for handler in handlers_dict[key]:
         resolutors.append( get_class(handler) )
     res, _res = None, None
-    mro = inspect.getmro(type(expr))
+    mro = expr.func.__mro__
     for handler in resolutors:
         for subclass in mro:
             if hasattr(handler, subclass.__name__):
