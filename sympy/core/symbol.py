@@ -59,7 +59,7 @@ class Symbol(Atom):
             return Symbol.__xnew_cached_(cls, name, commutative, **assumptions)
 
     def __new_stage2__(cls, name, commutative=True, **assumptions):
-        assert isinstance(name, str),`type(name)`
+        assert isinstance(name, str), repr(type(name))
         obj = Basic.__new__(cls, **assumptions)
         obj.is_commutative = commutative
         obj.name = name
