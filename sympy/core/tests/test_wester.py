@@ -457,7 +457,7 @@ def test_J5():
     assert polygamma(0, R(1,3)) == -EulerGamma - pi/2*sqrt(R(1,3)) - R(3,2)*log(3)
 
 def test_J6():
-    assert mpmath.jn(2, 1+1j).ae(mpc('0.04157988694396212', '0.24739764151330632'))
+    assert mpmath.besselj(2, 1+1j).ae(mpc('0.04157988694396212', '0.24739764151330632'))
 
 @XFAIL
 def test_J7():
