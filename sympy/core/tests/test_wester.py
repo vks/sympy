@@ -558,6 +558,7 @@ def test_K9():
     z = Symbol('z', real=True, positive=True)
     assert simplify(sqrt(1/z) - 1/sqrt(z)) == 0
 
+@XFAIL
 def test_K10():
     z = Symbol('z', real=True, negative=True)
     assert simplify(sqrt(1/z) + 1/sqrt(z)) == 0
