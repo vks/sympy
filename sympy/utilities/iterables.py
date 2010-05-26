@@ -431,3 +431,12 @@ def sift(expr, keyfunc):
     for e in expr:
         d.setdefault(keyfunc(e), []).append(e)
     return d
+
+def dict_merge(*dicts):
+    """Merge dictionaries into a single dictionary. """
+    merged = {}
+
+    for dict in dicts:
+        merged.update(dict)
+
+    return merged

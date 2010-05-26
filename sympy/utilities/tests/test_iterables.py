@@ -1,7 +1,7 @@
 from sympy import symbols, Integral, Tuple, Dummy, Basic, S
-from sympy.utilities.iterables import postorder_traversal, \
-    preorder_traversal, flatten, group, split, subsets, variations, cartes, \
-    numbered_symbols, sift
+from sympy.utilities.iterables import (postorder_traversal,
+    preorder_traversal, flatten, group, split, subsets, variations, cartes,
+    numbered_symbols, sift, dict_merge)
 from sympy.functions.elementary.piecewise import Piecewise, ExprCondPair
 from sympy.utilities.pytest import raises
 
@@ -161,8 +161,20 @@ def test_numbered_symbols():
     s = numbered_symbols(cls=Dummy)
     assert isinstance(s.next(), Dummy)
 
+<<<<<<< HEAD
 def test_sift():
     assert sift(range(5), lambda _: _%2) == {1: [1, 3], 0: [0, 2, 4]}
     assert sift(x + y, lambda _: _.has(x)) == {False: [y], True: [x]}
     assert sift(x*y, lambda _: _.has(x)) == {False: [y], True: [x]}
     assert sift(S.One, lambda _: _.has(x)) == {False: [1]}
+=======
+def test_dict_merge():
+    assert dict_merge({}, {1: x, y: z}) == {1: x, y: z}
+    assert dict_merge({1: x, y: z}, {}) == {1: x, y: z}
+
+    assert dict_merge({2: z}, {1: x, y: z}) == {1: x, 2: z, y: z}
+    assert dict_merge({1: x, y: z}, {2: z}) == {1: x, 2: z, y: z}
+
+    assert dict_merge({1: y, 2: z}, {1: x, y: z}) == {1: x, 2: z, y: z}
+    assert dict_merge({1: x, y: z}, {1: y, 2: z}) == {1: y, 2: z, y: z}
+>>>>>>> Added dict_merge, a simple function for combining dicts
