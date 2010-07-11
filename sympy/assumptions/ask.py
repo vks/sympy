@@ -1,5 +1,6 @@
 """Module for querying SymPy objects about assumptions."""
 import copy
+import inspect
 from sympy.core import sympify
 from sympy.utilities.source import get_class
 from sympy.assumptions import (get_local_assumptions, AssumptionsContext,
