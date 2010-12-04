@@ -1,4 +1,4 @@
-from sympy import (Symbol, pi, S, C,  Basic, Function, latex, sqrt, sympify,
+from sympy import (Symbol, pi, S, C,  Expr, Function, latex, sqrt, sympify,
         var, Wild, symbols, floor, Rational, I, E, zoo, oo, exp, nan)
 from sympy.core.cache import cacheit
 from sympy import sinh, cosh, tanh, coth, asinh, acosh, atanh, acoth
@@ -31,7 +31,7 @@ sin_table2 = [
 class ArgumentIndexError(IndexError):
     pass
 
-class TrigFunction(Basic):
+class TrigFunction(Expr):
     """
     Base class for all trigonometric functions.
     """
@@ -39,12 +39,12 @@ class TrigFunction(Basic):
     def __new__(cls, arg, eval=True):
         arg = sympify(arg)
         if not eval:
-            return Basic.__new__(cls, arg)
+            return Expr.__new__(cls, arg)
         r = cls.eval(arg)
         if r is not None:
             return r
         else:
-            return Basic.__new__(cls, arg)
+            return Expr.__new__(cls, arg)
 
     @classmethod
     def handle_minus(cls, x):
@@ -140,7 +140,7 @@ class TrigFunction(Basic):
         else:
             return True
 
-class InverseTrigFunction(Basic):
+class InverseTrigFunction(Expr):
     """
     Base class for all inverse trig functions.
     """
@@ -148,12 +148,12 @@ class InverseTrigFunction(Basic):
     def __new__(cls, arg, eval=True):
         arg = sympify(arg)
         if not eval:
-            return Basic.__new__(cls, arg)
+            return Expr.__new__(cls, arg)
         r = cls.eval(arg)
         if r is not None:
             return r
         else:
-            return Basic.__new__(cls, arg)
+            return Expr.__new__(cls, arg)
 
     @classmethod
     def eval(cls, arg):
