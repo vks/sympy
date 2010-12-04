@@ -2,6 +2,7 @@ from sympy.core.basic import S, C, sympify
 from sympy.core.function import Function
 from miscellaneous import sqrt
 from sympy.core.cache import cacheit
+# FIXME: import zoo
 
 ###############################################################################
 ########################## TRIGONOMETRIC FUNCTIONS ############################
@@ -994,11 +995,6 @@ class acsc(Function):
         return
 
     @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
-
-    @classmethod
     def eval(cls, arg):
         if arg.is_Number:
             if arg is S.NaN:
@@ -1095,11 +1091,6 @@ class asec(Function):
     @classmethod
     def _eval_apply_subs(self, *args):
         return
-
-    @classmethod
-    @deprecated
-    def canonize(cls, arg):
-        return cls.eval(arg)
 
     @classmethod
     def eval(cls, arg):
