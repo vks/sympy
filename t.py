@@ -1,4 +1,4 @@
-from sympy import (Symbol, pi, S, Basic, Function, solve, latex, sqrt, sympify,
+from sympy import (Symbol, pi, S, C,  Basic, Function, latex, sqrt, sympify,
         var, Wild, symbols, floor, Rational, I, E, zoo, oo, exp, nan)
 from sympy.core.cache import cacheit
 from sympy import sinh, cosh, tanh, coth, asinh, acosh, atanh, acoth
@@ -27,6 +27,9 @@ C32 = sqrt(5/S(8) + sqrt(5)/8)
 sin_table2 = [
         S.Zero,  C02,  C12,  C22,  C32,   S.One,  C32,  C22,  C12,  C02,
         S.Zero, -C02, -C12, -C22, -C32,  S.NegativeOne, -C32, -C22, -C12, -C02]
+
+class ArgumentIndexError(IndexError):
+    pass
 
 class TrigFunction(Basic):
     """
@@ -239,6 +242,7 @@ class Sin(TrigFunction):
                 return -Cos.handle_minus(a + b_mod*pi)
             elif oct == 8:
                 return -cls.handle_minus(-a + b_mod*pi)
+
     def fdiff(self, argindex=1):
         if argindex == 1:
             return Cos(self.args[0])
