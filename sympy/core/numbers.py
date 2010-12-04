@@ -916,11 +916,14 @@ class Integer(Rational):
         else:
             return Integer(-self.p)
 
+    # this breaks our new trig implementation
+    '''
     def __mod__(self, other):
         return Integer(self.p % other)
 
     def __rmod__(self, other):
         return Integer(other % self.p)
+    '''
 
     # TODO make it decorator + bytecodehacks?
     def __add__(a, b):
