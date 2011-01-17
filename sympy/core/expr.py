@@ -128,7 +128,6 @@ class Expr(Basic, EvalfMixin):
         else:
             raise TypeError("expected mpmath number (mpf or mpc)")
 
-
     def _eval_interval(self, x, a, b):
         """
         Returns evaluation over an interval.  For most functions this is:
@@ -535,6 +534,25 @@ class Expr(Basic, EvalfMixin):
                         return Mul(*n[ii+len(nx):])
 
             return None
+
+    def as_expr(self, *gens):
+        """
+        Convert a polynomial to a SymPy expression.
+
+        **Examples**
+
+        >>> from sympy import sin
+        >>> from sympy.abc import x, y
+
+        >>> f = (x**2 + x*y).as_poly(x, y)
+        >>> f.as_expr()
+        x*y + x**2
+
+        >>> sin(x).as_expr()
+        sin(x)
+
+        """
+        return self
 
     def as_coefficient(self, expr, right=False):
         """Extracts symbolic coefficient at the given expression. In
