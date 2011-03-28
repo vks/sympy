@@ -1,8 +1,10 @@
-from sympy import oo
+from sympy import oo, S
 from sympy.core.symbol import Symbol
 from sympy.functions.elementary.miscellaneous import Min, Max
+from sympy.utilities.pytest import raises
 
 def test_Min():
+    from sympy.abc import x, y, z
     n = Symbol('n', negative=True)
     n_ = Symbol('n_', negative=True)
     nn = Symbol('nn', nonnegative=True)
@@ -11,8 +13,8 @@ def test_Min():
     p_ = Symbol('p_', positive=True)
     np = Symbol('np', nonpositive=True)
     np_ = Symbol('np_', nonpositive=True)
-    assert Min(5, 4) == 4
 
+    assert Min(5, 4) == 4
     assert Min(-oo, -oo) == -oo
     assert Min(-oo, n) == -oo
     assert Min(n, -oo) == -oo
@@ -68,5 +70,41 @@ def test_Min():
     assert Min(np, np_).func is Min
     assert Min(p, p_).func is Min
 
+    # lists
+
+    raises(ValueError, 'Min()')
+    assert Min(p, oo, n,  p, p, p_) == n
+    assert set(Min(n, oo, -7, p,  p, 2).args) == set([n, S(-7)])
+    assert set(Min(2, x, p, n, oo, n_,  p, 2, -2, -2).args) == set([S(-2), x, n, n_])
+    assert set(Min(0, x, 1, y).args) == set([S(0), x, y])
+    assert set(Min(1000, 100, -100, x, p, n).args) == set ([n, x, S(-100)])
+
 def test_Max():
+    from sympy.abc import x, y, z
+    n = Symbol('n', negative=True)
+    n_ = Symbol('n_', negative=True)
+    nn = Symbol('nn', nonnegative=True)
+    nn_ = Symbol('nn_', nonnegative=True)
+    p = Symbol('p', positive=True)
+    p_ = Symbol('p_', positive=True)
+    np = Symbol('np', nonpositive=True)
+    np_ = Symbol('np_', nonpositive=True)
+
     assert Max(5, 4) == 5
+
+    # lists
+
+    raises(ValueError, 'Max()')
+    assert set(Max(n, -oo, n_,  p, 2).args) == set([p, S(2)])
+    assert Max(n, -oo, n_,  p) == p
+    assert set(Max(2, x, p, n, -oo, n_,  p, 2).args) == set([S(2), x, p])
+    assert set(Max(0, x, 1, y).args) == set([S(1), x, y])
+    assert Max(x, x + 1, x - 1) == 1 + x
+    assert set(Max(1000, 100, -100, x, p, n).args) == set ([p, x, S(1000)])
+    # interesting:
+    # Max(n, -oo, n_,  p, 2) == Max(p, 2)
+    # True
+    # Max(n, -oo, n_,  p, 1000) == Max(p, 1000)
+    # False
+
+
