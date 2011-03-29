@@ -26,8 +26,8 @@ class Max(Function):
     is more complicated. Return only the arguments, which are greater
     than others, if it is possible to determine directional relation.
 
-    if it is impossible to determine directional relation, then
-    return itself class.
+    If is not possible to determine such a relation, return a partially
+    evaluated result.
 
     Assumptions are used to make the decision too.
 
@@ -60,18 +60,18 @@ class Max(Function):
     The task can be considered as the task for directional graph.
     The graph can contain connected components or not.
 
-    So, dynamically search the vertex which can be removed,
-    remove them, and repeat it until it possible.
-    Vertex which can be removed is:
+    So, dynamically search the vertexes which can be removed,
+    remove them, and repeat removing until it is possible.
+
+    Vertexes which can be removed are:
         - duplicates.
-        - if it is related with others, and only with grater ones.
-            in other words there are no straight relation
-            from current vertex in graph.
+        - those who are related only with greater ones.
+
+    At the same time isolated vertexes should not be removed.
 
     Assumption:
        - if A > B > C then A > C
        - if A==B then B can be removed
-
 
     See Also
     --------
@@ -110,9 +110,9 @@ class Max(Function):
                         # remove from list
                         values = values[:i] + values[i+1:]
                         break
-            if len(values)==1:
+            if len(values) == 1:
                 return values[0]
-            return cls(*values, evaluate = False)
+            return cls(*values, evaluate=False)
 
     @classmethod
     def is_connected(cls, x, y):
@@ -128,7 +128,7 @@ class Max(Function):
     @classmethod
     def is_greater(cls, x, y):
         """
-        Check if x > y
+        Check if x > y.
         """
         if (x == y):
             return False
@@ -150,7 +150,7 @@ class Max(Function):
     @classmethod
     def remove_duplicates(cls, values):
         """
-        Remove duplicates from the list
+        Remove duplicates from the list.
         """
         # since Python 2.5
         return list(set(values))
@@ -158,10 +158,10 @@ class Max(Function):
     @classmethod
     def can_be_removed(cls, v, values):
         """
-        Check whether the some vertex can be removed from graph
+        Check whether the vertex can be removed from graph.
 
-        It is in the case when all other vertexes, which are connected
-        with current, are greater.
+        This is the case when all other vertexes, which are connected
+        with the current one, are greater.
         """
         res = False         # vertex might be isolated, should not be removed
         for v2 in values:
@@ -206,7 +206,7 @@ class Min(Max):
     @classmethod
     def is_less(cls, x, y):
         """
-        Check if x < y
+        Check if x < y.
         """
         if (x == y):
             return False
