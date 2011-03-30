@@ -112,7 +112,7 @@ class Max(Function):
                         break
             if len(values) == 1:
                 return values[0]
-            return cls(*values, evaluate=False)
+            return cls(*values, **{'evaluate': False})
 
     @classmethod
     def is_connected(cls, x, y):
@@ -152,7 +152,6 @@ class Max(Function):
         """
         Remove duplicates from the list.
         """
-        # since Python 2.5
         return list(set(values))
 
     @classmethod
