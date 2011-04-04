@@ -781,7 +781,7 @@ def test_coeff():
     assert (z*(x + y)**2).coeff(x+y) == None
     assert (2 + 2*x + (x+1)*y).coeff(x+1) == y
 
-    n, m, o, l = symbols('nmol', commutative=False)
+    n, m, o, l = symbols('n,m,o,l', commutative=False)
     assert n.coeff(n) ==  1
     assert y.coeff(n) == None
     assert (3*n).coeff(n) == 3
