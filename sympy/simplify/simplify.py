@@ -1,17 +1,16 @@
-from sympy import SYMPY_DEBUG, terms_gcd
+from sympy import SYMPY_DEBUG
 
-from sympy.core import Basic, S, C, Add, Mul, Pow, Rational, Integer, \
-        Derivative, Wild, Symbol, sympify, expand, expand_mul, expand_func, \
-        Function, Equality, Dummy
-
-from sympy.core.numbers import igcd
+from sympy.core import (Basic, S, C, Add, Mul, Pow, Rational, Integer,
+        Derivative, Wild, Symbol, sympify, expand_mul, expand_func,
+        Equality, Dummy)
 
 from sympy.utilities import all, any, flatten
 from sympy.functions import gamma, exp, sqrt, log
 
 from sympy.simplify.cse_main import cse
 
-from sympy.polys import Poly, together, reduced, cancel, factor, ComputationFailed
+from sympy.polys import (together, reduced, cancel, factor, ComputationFailed,
+        terms_gcd)
 
 import sympy.mpmath as mpmath
 
