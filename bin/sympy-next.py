@@ -49,7 +49,7 @@ def read_branchfile(f):
 
 def run_tests():
     logit("Running unit tests.")
-    out = subprocess.Popen(["./bin/test"], stdout=subprocess.PIPE).communicate()[0]
+    out = subprocess.Popen(["./bin/test"], stdout=subprocess.PIPE).stdout
 
     # echo to log
     print >> log, out
@@ -57,7 +57,7 @@ def run_tests():
 
     report = []
     # process output
-    lines = out.split('sympy/')
+    lines = out.xreadlines()
     for line in lines:
         good = None
         if line.endswith('[OK]\n'):
