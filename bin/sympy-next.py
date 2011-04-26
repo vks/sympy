@@ -82,7 +82,10 @@ def do_test(branches, name):
     gitn("checkout master", "checkout", "master")
     gitn("reset tree", "reset", "--hard")
     gitn("pull master", "pull", branches[0][0], branches[0][1])
-    gitn("switch to temporary branch", "checkout", "-b", name)
+    if git("switch to temporary branch", "checkout", "-b", name):
+        logit("Stale test branch?")
+        gitn("delete stale temporary branch", "branch", "-D", name)
+        gitn("switch to temporary branch", "checkout", "-b", name)
 
     # now try and fetch all other branches
     report = []
