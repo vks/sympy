@@ -58,8 +58,7 @@ def run_tests():
 
     report = []
     # process output
-    lines = out.xreadlines()
-    for line in lines:
+    for line in out:
         good = None
         if line.endswith('[OK]\n'):
             good = True
