@@ -49,7 +49,8 @@ def read_branchfile(f):
 
 def run_tests():
     logit("Running unit tests.")
-    out = subprocess.Popen(["./bin/test"], stdout=subprocess.PIPE).stdout
+    out = subprocess.Popen(["python2", "./bin/test"],
+            stdout=subprocess.PIPE).stdout
 
     # echo to log
     print >> log, out
