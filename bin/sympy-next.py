@@ -4,6 +4,7 @@
 # and create statistics about unit tests.
 #
 # Usage: sympy-next.py repo branches out-dir
+#    or: sympy-next.py out-dir
 # where
 #   repo      is is the location of a clean repository (possibly empty)
 #             that is going to be used.
@@ -19,6 +20,8 @@
 # all successful merges are done, the unit tests are run. Finally a report is
 # created of which branches could be merged, and which tests passed.
 # All commands run are logged to a file in the output directory.
+#
+# If only out-dir is specified, then only the html is re-created.
 #
 # TODO
 #  o Html output, and output creation, are ugly.
@@ -105,23 +108,7 @@ def do_test(branches, name):
 
     return report, tests
 
-def create_report(merges, tests, stamp):
-    picklef = "reports"
-
-    # load old reports
-    reports = []
-    if os.path.exists(picklef):
-        f = open(picklef, "rb")
-        reports = pickle.load(f)
-        f.close()
-
-    reports.append((stamp, merges, tests))
-
-    # dump all reports
-    f = open(picklef, "wb")
-    pickle.dump(reports, f)
-    f.close()
-
+def write_report(reports):
     # create a html report
     allstamps   = [t[0] for t in reports]
     allbranches = set()
@@ -163,17 +150,17 @@ def create_report(merges, tests, stamp):
     for stamp in allstamps:
         outf.write('    <th> %s </th\n' % stamp)
     outf.write('  </tr>\n')
-    for name, branch in branchtable.iteritems():
+    for name, branch in sorted(branchtable.iteritems()):
         outf.write('  <tr>\n')
-        outf.write('    <th> %s %s </th>\n' % (name[0], name[1]))
+        outf.write('    <th align="left"> %s %s </th>\n' % (name[0], name[1]))
         for stamp in allstamps:
             if stamp in branch:
                 if branch[stamp] == 'clean':
-                    outf.write('    <th bgcolor="#00FF00"> clean </th>\n')
+                    outf.write('    <td align="center" bgcolor="#00FF00"> clean </td>\n')
                 elif branch[stamp] == 'merge':
-                    outf.write('    <th bgcolor="#FF0000"> merge </th>\n')
+                    outf.write('    <td align="center" bgcolor="#FF0000"> conflicts </td>\n')
                 else:
-                    outf.write('    <th bgcolor="#FFFF00"> fetch </th>\n')
+                    outf.write('    <td align="center" bgcolor="#FFFF00"> fetch </td>\n')
             else:
                 outf.write('    <th> N/A </th>\n')
         outf.write('  </tr>\n')
@@ -186,24 +173,47 @@ def create_report(merges, tests, stamp):
     for stamp in allstamps:
         outf.write('    <th> %s </th\n' % stamp)
     outf.write('  </tr>\n')
-    for name, test in testtable.iteritems():
+    for name, test in sorted(testtable.iteritems()):
         outf.write('  <tr>\n')
-        outf.write('    <th> %s </th>\n' % name)
+        outf.write('    <th align="left"> %s </th>\n' % name)
         for stamp in allstamps:
             if stamp in test:
                 if test[stamp]:
-                    outf.write('    <th bgcolor="#00FF00"> OK </th>\n')
+                    outf.write('    <td align="center" bgcolor="#00FF00"> OK </td>\n')
                 else:
-                    outf.write('    <th bgcolor="#FF0000"> FAIL </th>\n')
+                    outf.write('    <td align="center" bgcolor="#FF0000"> FAIL </td>\n')
             else:
-                outf.write('    <th> N/A </th>\n')
+                outf.write('    <td align="center"> N/A </td>\n')
         outf.write('  </tr>\n')
     outf.write('</table>\n')
 
     outf.write('</body></html>')
 
+picklef = "reports"
+def create_report(merges, tests, stamp):
+    # load old reports
+    reports = []
+    if os.path.exists(picklef):
+        f = open(picklef, "rb")
+        reports = pickle.load(f)
+        f.close()
+
+    reports.append((stamp, merges, tests))
+
+    # dump all reports
+    f = open(picklef, "wb")
+    pickle.dump(reports, f)
+    f.close()
+
+    write_report(reports)
+
 
 # MAIN PROGRAM
+
+if len(sys.argv) == 2:
+    os.chdir(sys.argv[1])
+    write_report(pickle.load(open(picklef, 'rb')))
+    sys.exit(0)
 
 if len(sys.argv) != 4:
     print >> sys.stderr, "Usage: %s repo branches out-dir" % sys.argv[0]
